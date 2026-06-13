@@ -6,11 +6,14 @@ set -euo pipefail
 
 CLI="${SPEAR_CLI:-node dist/cli.js}"
 add() { $CLI add "$1" --type "$2" --priority "$3" --no-llm >/dev/null; }
+addDue() { $CLI add "$1" --type "$2" --priority "$3" --due "$4" --no-llm >/dev/null; }
+TODAY=$(node -e "console.log(new Date().toISOString().slice(0,10))")
+YDAY=$(node -e "const d=new Date();d.setDate(d.getDate()-1);console.log(d.toISOString().slice(0,10))")
 
 # --- themed clusters (show lane grouping + design→implementation→testing order) ---
 add "Search Ranking Design"            chore   high      # 1
-add "Search Indexing Implementation"   chore   high      # 2
-add "Search Relevance Testing"         chore   medium    # 3
+addDue "Search Indexing Implementation" chore  high "$YDAY"  # 2 (overdue)
+addDue "Search Relevance Testing"      chore   medium "$TODAY" # 3 (due today)
 add "Checkout Flow Design"             chore   high      # 4
 add "Checkout Payments Implementation" chore   critical  # 5
 add "Checkout E2E Testing"             chore   high      # 6

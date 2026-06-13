@@ -55,10 +55,10 @@ SPEAR_HOME=/tmp/spear-demo node dist/cli.js serve --port 4399 --open
 ## Everyday use
 
 ```bash
-spear add "Build the login screen" --priority high          # LLM classifies + breaks down
-spear add "Fix flaky auth test" --priority critical          # non-features: LLM decides the breakdown
+spear add "Fix prod outage in billing"                       # priority auto-inferred (→ critical)
+spear add "Ship onboarding revamp" --due 2026-09-01          # due date feeds priority + time-fit
 spear add "Renew SSL cert" --no-llm                          # instant capture, no LLM
-spear add "Ship v2" --type feature --blocked-by 1            # depends on task #1
+spear add "Ship v2" --type feature --blocked-by 1            # depends on task #1 (override with --priority)
 
 spear list                       # open tasks + next stage + blockers
 spear show 1                     # a task's stages, deps, delegation hints
@@ -68,13 +68,24 @@ spear status 3 in_progress       # set status explicitly
 spear block 4 --by 1             # add / remove a dependency
 spear unblock 4 --by 1
 
-spear plan                       # regenerate today's execution flow now
-spear today                      # print the current flow (lanes + narrative)
+spear plan                       # FULL re-cluster of today's lanes (LLM if available)
+spear today --hours 3            # current flow + what fits in the hours you have left
 spear serve --open               # start the dashboard at http://127.0.0.1:4317
 ```
 
 The CLI and dashboard stay in sync: any change pings a running `serve` so the browser updates
 live over SSE; with no server running, the plan is refreshed inline so `today`/`serve` are current.
+
+### A seamless day
+
+- **Zero-decision capture.** `spear add "..."` auto-infers priority from urgency words, the due
+  date, and whether it blocks others (the LLM refines it when keyed); `--priority` always wins.
+- **Sticky lanes.** Lane membership persists, so adding a task mid-day **slots it into the right
+  lane without reshuffling the rest of your day** — a lane only lightly re-balances when overloaded.
+  The full (LLM) re-cluster happens at `spear plan` and the morning job.
+- **Time-aware.** Overdue / due-today float to the top of their lane (⌛ / ⏰); a time budget
+  (effort estimates vs. remaining hours) marks what fits today vs. spills to tomorrow. Set the
+  window with `spear today --hours N` or the dashboard's "hrs left" control (`workdayEnd` in config).
 
 ## Delegation roster
 
