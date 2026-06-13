@@ -69,7 +69,7 @@ spear block 4 --by 1             # add / remove a dependency
 spear unblock 4 --by 1
 
 spear plan                       # FULL re-cluster of today's lanes (LLM if available)
-spear today --hours 3            # current flow + what fits in the hours you have left
+spear today                      # print the current execution flow
 spear serve --open               # start the dashboard at http://127.0.0.1:4317
 ```
 
@@ -83,9 +83,7 @@ live over SSE; with no server running, the plan is refreshed inline so `today`/`
 - **Sticky lanes.** Lane membership persists, so adding a task mid-day **slots it into the right
   lane without reshuffling the rest of your day** — a lane only lightly re-balances when overloaded.
   The full (LLM) re-cluster happens at `spear plan` and the morning job.
-- **Time-aware.** Overdue / due-today float to the top of their lane (⌛ / ⏰); a time budget
-  (effort estimates vs. remaining hours) marks what fits today vs. spills to tomorrow. Set the
-  window with `spear today --hours N` or the dashboard's "hrs left" control (`workdayEnd` in config).
+- **Due-date aware.** Overdue / due-today tasks float to the top of their lane (⌛ / ⏰).
 
 ## Delegation roster
 

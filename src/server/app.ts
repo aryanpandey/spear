@@ -11,7 +11,6 @@ import { PRIORITIES, TASK_STATUSES, TASK_TYPES, type Priority, type TaskStatus, 
 import { GOAL_STATUSES, type GoalStatus } from "../types.js";
 import { boardDto, todayDto } from "./dto.js";
 import { goalsPageDto, scorecardDto } from "./goalsDto.js";
-import { buildTimeOpts } from "../planner/timefit.js";
 import { createSseHub } from "./sse.js";
 import { Replanner } from "./replan.js";
 
@@ -33,10 +32,7 @@ export function buildServer(store: Store, cfg: SpearConfig): SpearServer {
 
   // ---- read API ----
   app.get("/api/board", async () => boardDto(store));
-  app.get<{ Querystring: { hours?: string } }>("/api/today", async (req) => {
-    const hours = req.query.hours != null ? Number(req.query.hours) : undefined;
-    return todayDto(store, buildTimeOpts(cfg.effortMinutes, cfg.workdayEnd, hours));
-  });
+  app.get("/api/today", async () => todayDto(store));
   app.get("/api/executors", async () => store.listExecutors());
 
   // ---- live updates (SSE) ----

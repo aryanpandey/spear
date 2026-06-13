@@ -44,8 +44,6 @@ export interface TodayItem {
   rationale: string;
   due: string | null;
   dueBand: DueBand;
-  estMin: number;
-  fitsToday: boolean;
   task: { id: number; title: string; priority: Priority; type: TaskType };
   stage: { id: number; name: string; kind: StageKind; status: StageStatus; effort: string | null };
 }
@@ -56,17 +54,9 @@ export interface TodayLane {
   items: TodayItem[];
 }
 
-export interface TimeBudget {
-  leftMin: number;
-  plannedMin: number;
-  fitsCount: number;
-  spillCount: number;
-}
-
 export interface TodayData {
   plan: { plan_date: string; trigger: string; narrative: string; model: string | null; generated_at: string } | null;
   lanes: TodayLane[];
-  timeBudget: TimeBudget | null;
 }
 
 export async function fetchBoard(): Promise<BoardData> {
@@ -75,17 +65,10 @@ export async function fetchBoard(): Promise<BoardData> {
   return r.json();
 }
 
-export async function fetchToday(hours?: number): Promise<TodayData> {
-  const q = hours != null && !Number.isNaN(hours) ? `?hours=${hours}` : "";
-  const r = await fetch(`/api/today${q}`);
+export async function fetchToday(): Promise<TodayData> {
+  const r = await fetch(`/api/today`);
   if (!r.ok) throw new Error(`today ${r.status}`);
   return r.json();
-}
-
-export function formatMinutes(min: number): string {
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  return h > 0 ? (m > 0 ? `${h}h${m}m` : `${h}h`) : `${m}m`;
 }
 
 // ---- Goals tab (mirrors src/server/goalsDto.ts) ----

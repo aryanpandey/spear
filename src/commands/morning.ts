@@ -3,7 +3,6 @@ import { openStore } from "../context.js";
 import { loadConfig } from "../config/index.js";
 import { buildAndSavePlan } from "../planner/build.js";
 import { renderPlan } from "../planner/render.js";
-import { buildTimeOpts } from "../planner/timefit.js";
 import { pingRefresh } from "../replan/trigger.js";
 import { notify } from "../notify/macos.js";
 
@@ -39,7 +38,7 @@ export function registerMorning(program: Command): void {
         await notify("spear · today's plan is ready", buildMorningSummary(plan.narrative, lanes, nowCount), url);
         await pingRefresh(cfg.port); // refresh an open dashboard without clobbering the plan
 
-        console.log(renderPlan(store, buildTimeOpts(cfg.effortMinutes, cfg.workdayEnd)));
+        console.log(renderPlan(store));
       } finally {
         store.db.close();
       }
