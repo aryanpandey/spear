@@ -1,0 +1,12 @@
+node_modules/
+dist/
+*.log
+.DS_Store
+.env
+.env.*
+coverage/
+*.tsbuildinfo
+
+# personal handoff / local state — never publish
+spear-context.json
+.spear/
