@@ -3,6 +3,7 @@ import { Rain } from "./components/Rain";
 import { Board } from "./components/Board";
 import { Today } from "./components/Today";
 import { Goals } from "./components/Goals";
+import { DesktopButton } from "./components/DesktopButton";
 import { fetchBoard, fetchToday, type BoardData, type TodayData } from "./api";
 
 type Tab = "today" | "board" | "goals";
@@ -58,6 +59,7 @@ export function App() {
           </button>
         </div>
         <div className="spacer" />
+        <DesktopButton />
         <span className="status">
           {err ? (
             <span style={{ color: "var(--crit)" }}>● {err}</span>

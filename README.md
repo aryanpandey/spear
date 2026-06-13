@@ -85,6 +85,30 @@ live over SSE; with no server running, the plan is refreshed inline so `today`/`
   The full (LLM) re-cluster happens at `spear plan` and the morning job.
 - **Due-date aware.** Overdue / due-today tasks float to the top of their lane (⌛ / ⏰).
 
+## Desktop app (Electron)
+
+spear can run as a native desktop window instead of a browser tab. The Electron shell
+(`electron/main.cjs`) boots the same server in-process and shares your `~/.spear` data.
+
+**Get it from the dashboard.** Open the dashboard in your browser and click **⤓ Desktop app**
+in the header — it detects your OS (macOS / Windows) and downloads the matching installer.
+The download is served by the local server from the `release/` directory.
+
+**Build the installers** (writes to `release/`):
+
+```bash
+npm run dist:mac     # → release/spear-<ver>-<arch>.dmg   (build on macOS)
+npm run dist:win     # → release/spear Setup <ver>.exe     (build on Windows, or via CI)
+npm run electron:dev # run the desktop shell locally without packaging
+```
+
+> Native installers are platform-specific: build the `.dmg` on macOS and the `.exe` on
+> Windows (or use CI / a Windows box — cross-building Windows from macOS needs Wine).
+> `better-sqlite3` is rebuilt for Electron's ABI during packaging (`npmRebuild`); the
+> `dist:*` scripts then run `npm rebuild better-sqlite3` (a `postdist` hook) to restore the
+> plain-Node ABI so the `spear` CLI keeps working. The mac build is unsigned
+> (`identity: null`); right-click → Open the first time.
+
 ## Delegation roster
 
 "Parallel" means **delegation**. The planner assigns independent flows to executors so you aren't

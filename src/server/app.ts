@@ -11,6 +11,7 @@ import { PRIORITIES, TASK_STATUSES, TASK_TYPES, type Priority, type TaskStatus, 
 import { GOAL_STATUSES, type GoalStatus } from "../types.js";
 import { boardDto, todayDto } from "./dto.js";
 import { goalsPageDto, scorecardDto } from "./goalsDto.js";
+import { desktopManifest, releaseDir } from "./desktop.js";
 import { createSseHub } from "./sse.js";
 import { Replanner } from "./replan.js";
 
@@ -34,6 +35,20 @@ export function buildServer(store: Store, cfg: SpearConfig): SpearServer {
   app.get("/api/board", async () => boardDto(store));
   app.get("/api/today", async () => todayDto(store));
   app.get("/api/executors", async () => store.listExecutors());
+
+  // ---- desktop app downloads ----
+  app.get("/api/desktop/manifest", async () => desktopManifest());
+  app.get<{ Params: { file: string } }>("/download/:file", async (req, reply) => {
+    const name = path.basename(req.params.file); // prevent path traversal
+    const full = path.join(releaseDir(), name);
+    if (!fs.existsSync(full) || !fs.statSync(full).isFile()) {
+      reply.code(404);
+      return { error: "not found" };
+    }
+    reply.header("Content-Disposition", `attachment; filename="${name}"`);
+    reply.type("application/octet-stream");
+    return reply.send(fs.createReadStream(full));
+  });
 
   // ---- live updates (SSE) ----
   app.get("/events", (req, reply) => {

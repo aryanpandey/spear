@@ -71,6 +71,38 @@ export async function fetchToday(): Promise<TodayData> {
   return r.json();
 }
 
+// ---- desktop app downloads ----
+
+export type DesktopPlatform = "mac" | "win";
+
+export interface DesktopArtifact {
+  platform: DesktopPlatform;
+  file: string;
+  url: string;
+  bytes: number;
+}
+
+export interface DesktopManifest {
+  version: string;
+  mac: DesktopArtifact | null;
+  win: DesktopArtifact | null;
+}
+
+export async function fetchDesktopManifest(): Promise<DesktopManifest> {
+  const r = await fetch("/api/desktop/manifest");
+  if (!r.ok) throw new Error(`desktop manifest ${r.status}`);
+  return r.json();
+}
+
+/** Best-effort detection of the visitor's OS for the download button. */
+export function detectPlatform(): DesktopPlatform | null {
+  const uaData = (navigator as unknown as { userAgentData?: { platform?: string } }).userAgentData;
+  const hay = `${uaData?.platform ?? ""} ${navigator.platform ?? ""} ${navigator.userAgent ?? ""}`.toLowerCase();
+  if (/mac|iphone|ipad|darwin/.test(hay)) return "mac";
+  if (/win/.test(hay)) return "win";
+  return null;
+}
+
 // ---- Goals tab (mirrors src/server/goalsDto.ts) ----
 
 export type GoalStatus = "active" | "done";

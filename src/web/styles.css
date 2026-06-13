@@ -373,3 +373,50 @@ main { padding: 18px 20px 40px; flex: 1; }
 
 .sc-delete { margin-top: 18px; font-size: 11px; }
 .scorecard-empty { padding: 20px 0; }
+
+/* ---- desktop-app download ---- */
+.desktop-dl { position: relative; }
+.desktop-btn { white-space: nowrap; }
+.dl-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 60;
+  width: 280px;
+  background: var(--panel-solid);
+  border: 1px solid var(--green);
+  box-shadow: var(--glow);
+  padding: 12px;
+}
+.dl-head {
+  color: var(--green);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 11px;
+  border-bottom: 1px dashed var(--border);
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+}
+.dl-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 4px;
+}
+.dl-row.detected { background: rgba(0, 255, 65, 0.08); }
+.dl-os { color: var(--text); }
+.dl-you { color: var(--green); font-size: 10px; }
+.dl-get {
+  color: var(--green);
+  border: 1px solid var(--green);
+  padding: 2px 10px;
+  text-decoration: none;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.dl-get:hover { background: var(--green); color: var(--bg); box-shadow: var(--glow); }
+.dl-missing { color: var(--text-dim); font-size: 11px; }
+.dl-err { color: var(--crit); font-size: 11px; }
+.dl-foot { color: var(--text-dim); font-size: 10px; margin-top: 8px; border-top: 1px dashed var(--border); padding-top: 6px; }
+.dl-foot code { color: var(--cyan); }
