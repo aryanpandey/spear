@@ -44,7 +44,7 @@ describe("Replanner.requestReplan (no API key)", () => {
     expect(plan!.model).toBeNull(); // deterministic
     expect(store.getPlanItems(plan!.id).length).toBeGreaterThan(0);
     expect(hub.events).toHaveLength(1);
-    expect(hub.events[0]).toMatchObject({ type: "update", source: "deterministic" });
+    expect(hub.events[0]).toMatchObject({ type: "update", source: "sticky" });
     replanner.dispose();
   });
 });

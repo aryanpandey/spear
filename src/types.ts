@@ -55,6 +55,8 @@ export interface Task {
   due: string | null;
   source: string;
   external_id: string | null;
+  /** Persistent lane assignment (sticky across replans); null until first planned. */
+  lane: number | null;
   created_at: string;
   updated_at: string;
 }

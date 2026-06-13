@@ -1,8 +1,6 @@
 import type { Store } from "../db/store.js";
 import type { SpearConfig } from "../config/index.js";
-import { todayLocal } from "../util/time.js";
-import { deterministicPlan } from "../planner/graph.js";
-import { buildPlannerInput, plannerExecutors } from "../planner/context.js";
+import { saveStickyPlan } from "../planner/build.js";
 
 /**
  * After a CLI mutation, keep the plan + dashboard in sync:
@@ -25,11 +23,7 @@ export async function triggerReplan(store: Store, cfg: SpearConfig): Promise<"se
     /* no server listening — fall through to inline */
   }
 
-  const det = deterministicPlan(buildPlannerInput(store), plannerExecutors(store), cfg.maxLanes);
-  store.savePlan(
-    { plan_date: todayLocal(), trigger: "adhoc", narrative: det.narrative, model: null },
-    det.items,
-  );
+  saveStickyPlan(store, cfg, "adhoc");
   return "inline";
 }
 

@@ -147,6 +147,24 @@ export class Store {
     this.db.prepare("DELETE FROM tasks WHERE id = ?").run(id);
   }
 
+  /** Set a task's persistent lane (does not bump updated_at — it's plan-internal). */
+  setTaskLane(id: number, lane: number | null): void {
+    this.db.prepare("UPDATE tasks SET lane = ? WHERE id = ?").run(lane, id);
+  }
+
+  // ---- meta (key/value) ----
+
+  getMeta(key: string): string | null {
+    const row = this.db.prepare("SELECT value FROM meta WHERE key = ?").get(key) as { value: string } | undefined;
+    return row ? row.value : null;
+  }
+
+  setMeta(key: string, value: string): void {
+    this.db
+      .prepare("INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
+      .run(key, value);
+  }
+
   // ---- stages ----
 
   addStage(input: NewStage): Stage {
@@ -362,6 +380,7 @@ interface TaskRow {
   due: string | null;
   source: string;
   external_id: string | null;
+  lane: number | null;
   created_at: string;
   updated_at: string;
 }

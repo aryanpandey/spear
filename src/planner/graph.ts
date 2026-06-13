@@ -8,7 +8,7 @@ import {
   type TaskStatus,
 } from "../types.js";
 import type { PlanItemInput } from "../db/store.js";
-import { clusterByTitle, phaseRank } from "./grouping.js";
+import { clusterByTitle, incrementalGroups, phaseRank } from "./grouping.js";
 
 // ---- Plain inputs (decoupled from the DB so the graph is trivially testable) ----
 
@@ -189,9 +189,21 @@ function topoSort(nodes: Map<number, PlannerNode>): { order: number[]; cycle: nu
   return { order, cycle: null };
 }
 
+export type PlanMode = "full" | "incremental";
+
+export interface DeterministicPlanOpts {
+  /** 'full' re-clusters from scratch; 'incremental' keeps existing lanes sticky. */
+  mode?: PlanMode;
+  /** taskId → lane, for incremental mode. */
+  existingLanes?: Map<number, number>;
+  stageLookup?: Map<number, PlannerStage>;
+}
+
 export interface DeterministicPlan {
   items: PlanItemInput[];
   narrative: string;
+  /** taskId → lane index, to persist as sticky membership. */
+  membership: Map<number, number>;
 }
 
 /**
@@ -206,14 +218,15 @@ export function deterministicPlan(
   input: PlannerInput,
   executors: PlannerExecutor[],
   maxLanes = 8,
-  stageLookup?: Map<number, PlannerStage>,
+  opts: DeterministicPlanOpts = {},
 ): DeterministicPlan {
+  const mode = opts.mode ?? "full";
   const graph = buildPlannerGraph(input);
   const self = executors.find((e) => e.kind === "self") ?? executors[0];
   const selfId = self?.id ?? null;
 
-  const stageById = stageLookup ?? new Map<number, PlannerStage>();
-  if (!stageLookup) {
+  const stageById = opts.stageLookup ?? new Map<number, PlannerStage>();
+  if (!opts.stageLookup) {
     for (const list of input.stages.values()) for (const s of list) stageById.set(s.id, s);
   }
   const titleById = new Map(input.tasks.map((t) => [t.id, t.title ?? ""]));
@@ -227,26 +240,37 @@ export function deterministicPlan(
     return sid != null ? stageById.get(sid)?.kind : undefined;
   };
 
-  // Group similar tasks into lanes (capped), then sort within and across lanes.
-  const groups = clusterByTitle(ordered.map((id) => ({ id, title: titleById.get(id) ?? "" })), maxLanes);
+  // Lane membership: incremental keeps existing lanes sticky; full re-clusters.
+  const groups =
+    mode === "incremental"
+      ? incrementalGroups(ordered, opts.existingLanes ?? new Map(), maxLanes, titleById)
+      : clusterByTitle(ordered.map((id) => ({ id, title: titleById.get(id) ?? "" })), maxLanes);
+
+  // Order within each lane: phase (design → implementation → testing), then priority.
   for (const g of groups) {
     g.sort((a, b) => {
       const pa = phaseRank(titleById.get(a) ?? "", firstStageKind(a));
       const pb = phaseRank(titleById.get(b) ?? "", firstStageKind(b));
-      if (pa !== pb) return pa - pb; // design → implementation → testing
+      if (pa !== pb) return pa - pb;
       return (actionIndex.get(a) ?? 0) - (actionIndex.get(b) ?? 0);
     });
   }
-  groups.sort(
-    (g1, g2) =>
-      Math.min(...g1.map((id) => actionIndex.get(id) ?? 0)) -
-      Math.min(...g2.map((id) => actionIndex.get(id) ?? 0)),
-  );
+  // Order lanes by their most important member — but only for a full re-cluster.
+  // Incremental keeps stored lane order so lane numbers stay stable through the day.
+  if (mode === "full") {
+    groups.sort(
+      (g1, g2) =>
+        Math.min(...g1.map((id) => actionIndex.get(id) ?? 0)) -
+        Math.min(...g2.map((id) => actionIndex.get(id) ?? 0)),
+    );
+  }
 
+  const membership = new Map<number, number>();
   const items: PlanItemInput[] = [];
   groups.forEach((group, lane) => {
     let laneHasNow = false;
     let order = 0;
+    for (const taskId of group) membership.set(taskId, lane);
     for (const taskId of group) {
       const node = graph.nodes.get(taskId)!;
       node.remainingStageIds.forEach((stageId, j) => {
@@ -279,5 +303,5 @@ export function deterministicPlan(
     (delegatable ? ` ${delegatable} step(s) could be delegated to free up your critical path.` : "") +
     (graph.cycle ? ` ⚠ dependency cycle among #${graph.cycle.join(", #")}.` : "");
 
-  return { items, narrative };
+  return { items, narrative, membership };
 }

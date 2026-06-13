@@ -10,8 +10,14 @@ CREATE TABLE IF NOT EXISTS tasks (
   due TEXT,
   source TEXT NOT NULL DEFAULT 'cli',
   external_id TEXT UNIQUE,
+  lane INTEGER,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS meta (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS stages (

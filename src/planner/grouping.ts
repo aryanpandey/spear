@@ -94,6 +94,95 @@ function capLanes(
   return anchors;
 }
 
+/**
+ * Incremental (sticky) lane membership: keep every task that already has a lane
+ * where it is; place only NEW tasks (not in `existing`) into the best-matching
+ * lane by title tokens, else a new lane (under cap) or the smallest lane. Then a
+ * light split if a lane is overloaded and there's room under the cap. `ordered`
+ * is priority-first, so group tails are the lowest-priority members.
+ */
+export function incrementalGroups(
+  ordered: number[],
+  existing: Map<number, number>,
+  maxLanes: number,
+  titleById: Map<number, string>,
+): number[][] {
+  const byLane = new Map<number, number[]>();
+  const newTasks: number[] = [];
+  for (const id of ordered) {
+    const l = existing.get(id);
+    if (l == null) newTasks.push(id);
+    else {
+      if (!byLane.has(l)) byLane.set(l, []);
+      byLane.get(l)!.push(id);
+    }
+  }
+
+  const groups: number[][] = [...byLane.keys()].sort((a, b) => a - b).map((k) => byLane.get(k)!);
+  const laneTokens = groups.map((g) => new Set(g.flatMap((id) => titleTokens(titleById.get(id) ?? ""))));
+
+  for (const id of newTasks) {
+    const toks = titleTokens(titleById.get(id) ?? "");
+    let best = -1;
+    let bestShared = 0;
+    laneTokens.forEach((ts, i) => {
+      const shared = toks.filter((t) => ts.has(t)).length;
+      if (shared > bestShared) {
+        bestShared = shared;
+        best = i;
+      }
+    });
+    if (best >= 0 && bestShared >= 1) {
+      groups[best].push(id);
+      toks.forEach((t) => laneTokens[best].add(t));
+    } else if (groups.length < maxLanes) {
+      groups.push([id]);
+      laneTokens.push(new Set(toks));
+    } else {
+      const si = smallestLane(groups);
+      groups[si].push(id);
+      toks.forEach((t) => laneTokens[si].add(t));
+    }
+  }
+
+  rebalanceSplit(groups, laneTokens, maxLanes, titleById);
+  return groups.filter((g) => g.length > 0);
+}
+
+function smallestLane(groups: number[][]): number {
+  let si = 0;
+  groups.forEach((g, i) => {
+    if (g.length < groups[si].length) si = i;
+  });
+  return si;
+}
+
+/** Light re-balance: if a lane is overloaded and there's room under the cap, split its tail off. */
+function rebalanceSplit(
+  groups: number[][],
+  laneTokens: Set<string>[],
+  maxLanes: number,
+  titleById: Map<number, string>,
+): void {
+  if (groups.length === 0 || groups.length >= maxLanes) return; // at cap → stay stable until a full re-cluster
+  const total = groups.reduce((s, g) => s + g.length, 0);
+  const cap = Math.ceil(total / groups.length) + 1;
+  let oi = -1;
+  let omax = cap;
+  groups.forEach((g, i) => {
+    if (g.length > omax) {
+      omax = g.length;
+      oi = i;
+    }
+  });
+  if (oi < 0) return;
+  const overflow = groups[oi].splice(cap); // tail = lowest priority
+  if (overflow.length) {
+    groups.push(overflow);
+    laneTokens.push(new Set(overflow.flatMap((id) => titleTokens(titleById.get(id) ?? ""))));
+  }
+}
+
 /** design/planning = 0, implementation = 1, testing/stage_testing = 2. */
 export function titlePhaseRank(title: string): number {
   const t = (title || "").toLowerCase();
