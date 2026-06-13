@@ -71,4 +71,47 @@ CREATE TABLE IF NOT EXISTS plan_items (
   rationale TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_plan_items_plan ON plan_items(plan_id);
+
+-- ---- weekly goals ("Goals" tab) ----
+
+CREATE TABLE IF NOT EXISTS goals (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  notes TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'active',
+  sort INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS scorecards (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL DEFAULT 'Weekly Focus',
+  week_of TEXT,
+  bonus_reward TEXT NOT NULL DEFAULT '',
+  is_current INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS scorecard_metrics (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  scorecard_id INTEGER NOT NULL REFERENCES scorecards(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  progress REAL NOT NULL DEFAULT 0,
+  goal REAL NOT NULL DEFAULT 0,
+  weight REAL NOT NULL DEFAULT 0,
+  sort INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_scorecard_metrics_card ON scorecard_metrics(scorecard_id);
+
+CREATE TABLE IF NOT EXISTS scorecard_bonuses (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  scorecard_id INTEGER NOT NULL REFERENCES scorecards(id) ON DELETE CASCADE,
+  task TEXT NOT NULL,
+  reward TEXT NOT NULL DEFAULT '',
+  done INTEGER NOT NULL DEFAULT 0,
+  sort INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_scorecard_bonuses_card ON scorecard_bonuses(scorecard_id);
 `;

@@ -14,6 +14,7 @@ import { registerMorning } from "./commands/morning.js";
 import { registerImportNotion } from "./commands/importNotion.js";
 import { registerConfig } from "./commands/config.js";
 import { registerExecutor } from "./commands/executor.js";
+import { registerGoal } from "./commands/goal.js";
 
 const program = new Command();
 
@@ -36,6 +37,7 @@ registerMorning(program);
 registerImportNotion(program);
 registerConfig(program);
 registerExecutor(program);
+registerGoal(program);
 
 program.parseAsync(process.argv).catch((err) => {
   console.error(err instanceof Error ? err.message : err);

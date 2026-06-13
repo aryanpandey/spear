@@ -2,9 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 import { Rain } from "./components/Rain";
 import { Board } from "./components/Board";
 import { Today } from "./components/Today";
+import { Goals } from "./components/Goals";
 import { fetchBoard, fetchToday, type BoardData, type TodayData } from "./api";
 
-type Tab = "today" | "board";
+type Tab = "today" | "board" | "goals";
 
 export function App() {
   const [tab, setTab] = useState<Tab>("today");
@@ -54,6 +55,9 @@ export function App() {
           <button className={`tab ${tab === "board" ? "active" : ""}`} onClick={() => setTab("board")}>
             Board
           </button>
+          <button className={`tab ${tab === "goals" ? "active" : ""}`} onClick={() => setTab("goals")}>
+            Goals
+          </button>
         </div>
         <div className="spacer" />
         {tab === "today" && (
@@ -81,10 +85,10 @@ export function App() {
         </span>
       </header>
       <main>
-        {tab === "today"
-          ? today && <Today data={today} />
-          : board && <Board data={board} />}
-        {!board && !today && !err && <div className="empty">loading…</div>}
+        {tab === "today" && today && <Today data={today} />}
+        {tab === "board" && board && <Board data={board} />}
+        {tab === "goals" && <Goals />}
+        {tab !== "goals" && !board && !today && !err && <div className="empty">loading…</div>}
       </main>
     </div>
   );

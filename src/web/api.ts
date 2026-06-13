@@ -87,3 +87,92 @@ export function formatMinutes(min: number): string {
   const m = min % 60;
   return h > 0 ? (m > 0 ? `${h}h${m}m` : `${h}h`) : `${m}m`;
 }
+
+// ---- Goals tab (mirrors src/server/goalsDto.ts) ----
+
+export type GoalStatus = "active" | "done";
+
+export interface Goal {
+  id: number;
+  title: string;
+  notes: string;
+  status: GoalStatus;
+  sort: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ScorecardMetric {
+  id: number;
+  scorecard_id: number;
+  name: string;
+  progress: number;
+  goal: number;
+  weight: number;
+  sort: number;
+  earned: number;
+  pct: number;
+}
+
+export interface ScorecardBonus {
+  id: number;
+  scorecard_id: number;
+  task: string;
+  reward: string;
+  done: boolean;
+  sort: number;
+}
+
+export interface Scorecard {
+  id: number;
+  title: string;
+  week_of: string | null;
+  bonus_reward: string;
+  is_current: boolean;
+  metrics: ScorecardMetric[];
+  bonuses: ScorecardBonus[];
+  totals: { earned: number; weight: number; pct: number };
+}
+
+export interface GoalsData {
+  goals: Goal[];
+  scorecard: Scorecard | null;
+  scorecards: { id: number; title: string; is_current: boolean }[];
+}
+
+async function jsonOrThrow(r: Response): Promise<any> {
+  if (!r.ok) throw new Error(`${r.url} ${r.status}`);
+  return r.json();
+}
+
+const send = (method: string, url: string, body?: unknown): Promise<any> =>
+  fetch(url, {
+    method,
+    headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  }).then(jsonOrThrow);
+
+export const goalsApi = {
+  fetch: (): Promise<GoalsData> => fetch("/api/goals").then(jsonOrThrow),
+
+  addGoal: (title: string) => send("POST", "/api/goals", { title }),
+  patchGoal: (id: number, patch: Partial<Pick<Goal, "title" | "notes" | "status">>) =>
+    send("PATCH", `/api/goals/${id}`, patch),
+  toggleGoal: (id: number) => send("POST", `/api/goals/${id}/toggle`),
+  deleteGoal: (id: number) => send("DELETE", `/api/goals/${id}`),
+
+  createScorecard: (title: string) => send("POST", "/api/scorecards", { title }),
+  patchScorecard: (id: number, patch: { title?: string; week_of?: string | null; bonus_reward?: string; current?: boolean }) =>
+    send("PATCH", `/api/scorecards/${id}`, patch),
+  deleteScorecard: (id: number) => send("DELETE", `/api/scorecards/${id}`),
+
+  addMetric: (scorecardId: number, name: string) => send("POST", `/api/scorecards/${scorecardId}/metrics`, { name }),
+  patchMetric: (id: number, patch: Partial<Pick<ScorecardMetric, "name" | "progress" | "goal" | "weight">>) =>
+    send("PATCH", `/api/metrics/${id}`, patch),
+  deleteMetric: (id: number) => send("DELETE", `/api/metrics/${id}`),
+
+  addBonus: (scorecardId: number, task: string) => send("POST", `/api/scorecards/${scorecardId}/bonuses`, { task }),
+  patchBonus: (id: number, patch: Partial<Pick<ScorecardBonus, "task" | "reward" | "done">>) =>
+    send("PATCH", `/api/bonuses/${id}`, patch),
+  deleteBonus: (id: number) => send("DELETE", `/api/bonuses/${id}`),
+};

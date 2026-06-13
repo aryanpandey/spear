@@ -6,10 +6,15 @@ import type {
   Effort,
   Executor,
   ExecutorKind,
+  Goal,
+  GoalStatus,
   PlanItem,
   PlanTrigger,
   Priority,
   ScheduledState,
+  Scorecard,
+  ScorecardBonus,
+  ScorecardMetric,
   Stage,
   StageKind,
   StageStatus,
@@ -57,6 +62,37 @@ export interface PlanItemInput {
   is_delegation_candidate: boolean;
   scheduled_state: ScheduledState;
   rationale: string;
+}
+
+export interface NewGoal {
+  title: string;
+  notes?: string;
+  status?: GoalStatus;
+  sort?: number;
+}
+
+export interface NewScorecard {
+  title?: string;
+  week_of?: string | null;
+  bonus_reward?: string;
+  is_current?: boolean;
+}
+
+export interface NewMetric {
+  scorecard_id: number;
+  name: string;
+  progress?: number;
+  goal?: number;
+  weight?: number;
+  sort?: number;
+}
+
+export interface NewBonus {
+  scorecard_id: number;
+  task: string;
+  reward?: string;
+  done?: boolean;
+  sort?: number;
 }
 
 /** Typed, JSON-aware wrapper around the spear SQLite database. */
@@ -365,6 +401,240 @@ export class Store {
       .all(planId) as PlanItemRow[];
     return rows.map(mapPlanItem);
   }
+
+  // ---- goals (simple list) ----
+
+  createGoal(input: NewGoal): Goal {
+    const ts = nowIso();
+    const sort = input.sort ?? this.nextGoalSort();
+    const info = this.db
+      .prepare(
+        `INSERT INTO goals (title, notes, status, sort, created_at, updated_at)
+         VALUES (@title, @notes, @status, @sort, @created_at, @updated_at)`,
+      )
+      .run({
+        title: input.title,
+        notes: input.notes ?? "",
+        status: input.status ?? "active",
+        sort,
+        created_at: ts,
+        updated_at: ts,
+      });
+    return this.getGoal(Number(info.lastInsertRowid))!;
+  }
+
+  private nextGoalSort(): number {
+    const row = this.db.prepare("SELECT COALESCE(MAX(sort), -1) + 1 AS n FROM goals").get() as { n: number };
+    return row.n;
+  }
+
+  getGoal(id: number): Goal | undefined {
+    const row = this.db.prepare("SELECT * FROM goals WHERE id = ?").get(id) as GoalRow | undefined;
+    return row ? mapGoal(row) : undefined;
+  }
+
+  listGoals(): Goal[] {
+    const rows = this.db.prepare("SELECT * FROM goals ORDER BY sort ASC, id ASC").all() as GoalRow[];
+    return rows.map(mapGoal);
+  }
+
+  updateGoal(id: number, patch: Partial<Omit<Goal, "id" | "created_at">>): Goal | undefined {
+    const current = this.getGoal(id);
+    if (!current) return undefined;
+    const merged = { ...current, ...patch, updated_at: nowIso() };
+    this.db
+      .prepare(
+        `UPDATE goals SET title=@title, notes=@notes, status=@status, sort=@sort, updated_at=@updated_at WHERE id=@id`,
+      )
+      .run({ ...merged, id });
+    return this.getGoal(id);
+  }
+
+  deleteGoal(id: number): void {
+    this.db.prepare("DELETE FROM goals WHERE id = ?").run(id);
+  }
+
+  // ---- scorecards (weekly focus) ----
+
+  createScorecard(input: NewScorecard): Scorecard {
+    const ts = nowIso();
+    const info = this.db
+      .prepare(
+        `INSERT INTO scorecards (title, week_of, bonus_reward, is_current, created_at, updated_at)
+         VALUES (@title, @week_of, @bonus_reward, @is_current, @created_at, @updated_at)`,
+      )
+      .run({
+        title: input.title ?? "Weekly Focus",
+        week_of: input.week_of ?? null,
+        bonus_reward: input.bonus_reward ?? "",
+        is_current: input.is_current ? 1 : 0,
+        created_at: ts,
+        updated_at: ts,
+      });
+    const id = Number(info.lastInsertRowid);
+    if (input.is_current) this.setCurrentScorecard(id);
+    return this.getScorecard(id)!;
+  }
+
+  getScorecard(id: number): Scorecard | undefined {
+    const row = this.db.prepare("SELECT * FROM scorecards WHERE id = ?").get(id) as ScorecardRow | undefined;
+    return row ? mapScorecard(row) : undefined;
+  }
+
+  listScorecards(): Scorecard[] {
+    const rows = this.db
+      .prepare("SELECT * FROM scorecards ORDER BY is_current DESC, id DESC")
+      .all() as ScorecardRow[];
+    return rows.map(mapScorecard);
+  }
+
+  getCurrentScorecard(): Scorecard | undefined {
+    const row = this.db
+      .prepare("SELECT * FROM scorecards WHERE is_current = 1 ORDER BY id DESC LIMIT 1")
+      .get() as ScorecardRow | undefined;
+    return row ? mapScorecard(row) : undefined;
+  }
+
+  /** Mark one scorecard current and clear the flag on all others. */
+  setCurrentScorecard(id: number): void {
+    const tx = this.db.transaction((cardId: number) => {
+      this.db.prepare("UPDATE scorecards SET is_current = 0").run();
+      this.db.prepare("UPDATE scorecards SET is_current = 1, updated_at = ? WHERE id = ?").run(nowIso(), cardId);
+    });
+    tx(id);
+  }
+
+  updateScorecard(
+    id: number,
+    patch: Partial<Pick<Scorecard, "title" | "week_of" | "bonus_reward">>,
+  ): Scorecard | undefined {
+    const current = this.getScorecard(id);
+    if (!current) return undefined;
+    const merged = { ...current, ...patch, updated_at: nowIso() };
+    this.db
+      .prepare(
+        `UPDATE scorecards SET title=@title, week_of=@week_of, bonus_reward=@bonus_reward, updated_at=@updated_at WHERE id=@id`,
+      )
+      .run({
+        title: merged.title,
+        week_of: merged.week_of,
+        bonus_reward: merged.bonus_reward,
+        updated_at: merged.updated_at,
+        id,
+      });
+    return this.getScorecard(id);
+  }
+
+  deleteScorecard(id: number): void {
+    this.db.prepare("DELETE FROM scorecards WHERE id = ?").run(id);
+  }
+
+  // ---- scorecard metrics ----
+
+  addMetric(input: NewMetric): ScorecardMetric {
+    const sort = input.sort ?? this.nextRowSort("scorecard_metrics", input.scorecard_id);
+    const info = this.db
+      .prepare(
+        `INSERT INTO scorecard_metrics (scorecard_id, name, progress, goal, weight, sort)
+         VALUES (@scorecard_id, @name, @progress, @goal, @weight, @sort)`,
+      )
+      .run({
+        scorecard_id: input.scorecard_id,
+        name: input.name,
+        progress: input.progress ?? 0,
+        goal: input.goal ?? 0,
+        weight: input.weight ?? 0,
+        sort,
+      });
+    return this.getMetric(Number(info.lastInsertRowid))!;
+  }
+
+  getMetric(id: number): ScorecardMetric | undefined {
+    const row = this.db.prepare("SELECT * FROM scorecard_metrics WHERE id = ?").get(id) as
+      | ScorecardMetric
+      | undefined;
+    return row ?? undefined;
+  }
+
+  listMetrics(scorecardId: number): ScorecardMetric[] {
+    return this.db
+      .prepare("SELECT * FROM scorecard_metrics WHERE scorecard_id = ? ORDER BY sort ASC, id ASC")
+      .all(scorecardId) as ScorecardMetric[];
+  }
+
+  updateMetric(
+    id: number,
+    patch: Partial<Pick<ScorecardMetric, "name" | "progress" | "goal" | "weight" | "sort">>,
+  ): ScorecardMetric | undefined {
+    const current = this.getMetric(id);
+    if (!current) return undefined;
+    const merged = { ...current, ...patch };
+    this.db
+      .prepare(
+        `UPDATE scorecard_metrics SET name=@name, progress=@progress, goal=@goal, weight=@weight, sort=@sort WHERE id=@id`,
+      )
+      .run({ name: merged.name, progress: merged.progress, goal: merged.goal, weight: merged.weight, sort: merged.sort, id });
+    return this.getMetric(id);
+  }
+
+  deleteMetric(id: number): void {
+    this.db.prepare("DELETE FROM scorecard_metrics WHERE id = ?").run(id);
+  }
+
+  // ---- scorecard bonus tasks ----
+
+  addBonus(input: NewBonus): ScorecardBonus {
+    const sort = input.sort ?? this.nextRowSort("scorecard_bonuses", input.scorecard_id);
+    const info = this.db
+      .prepare(
+        `INSERT INTO scorecard_bonuses (scorecard_id, task, reward, done, sort)
+         VALUES (@scorecard_id, @task, @reward, @done, @sort)`,
+      )
+      .run({
+        scorecard_id: input.scorecard_id,
+        task: input.task,
+        reward: input.reward ?? "",
+        done: input.done ? 1 : 0,
+        sort,
+      });
+    return this.getBonus(Number(info.lastInsertRowid))!;
+  }
+
+  getBonus(id: number): ScorecardBonus | undefined {
+    const row = this.db.prepare("SELECT * FROM scorecard_bonuses WHERE id = ?").get(id) as BonusRow | undefined;
+    return row ? mapBonus(row) : undefined;
+  }
+
+  listBonuses(scorecardId: number): ScorecardBonus[] {
+    const rows = this.db
+      .prepare("SELECT * FROM scorecard_bonuses WHERE scorecard_id = ? ORDER BY sort ASC, id ASC")
+      .all(scorecardId) as BonusRow[];
+    return rows.map(mapBonus);
+  }
+
+  updateBonus(
+    id: number,
+    patch: Partial<Pick<ScorecardBonus, "task" | "reward" | "done" | "sort">>,
+  ): ScorecardBonus | undefined {
+    const current = this.getBonus(id);
+    if (!current) return undefined;
+    const merged = { ...current, ...patch };
+    this.db
+      .prepare(`UPDATE scorecard_bonuses SET task=@task, reward=@reward, done=@done, sort=@sort WHERE id=@id`)
+      .run({ task: merged.task, reward: merged.reward, done: merged.done ? 1 : 0, sort: merged.sort, id });
+    return this.getBonus(id);
+  }
+
+  deleteBonus(id: number): void {
+    this.db.prepare("DELETE FROM scorecard_bonuses WHERE id = ?").run(id);
+  }
+
+  private nextRowSort(table: "scorecard_metrics" | "scorecard_bonuses", scorecardId: number): number {
+    const row = this.db
+      .prepare(`SELECT COALESCE(MAX(sort), -1) + 1 AS n FROM ${table} WHERE scorecard_id = ?`)
+      .get(scorecardId) as { n: number };
+    return row.n;
+  }
 }
 
 // ---- raw row types & mappers ----
@@ -470,4 +740,42 @@ function safeJsonArray(s: string): unknown[] {
   } catch {
     return [];
   }
+}
+
+interface GoalRow {
+  id: number;
+  title: string;
+  notes: string;
+  status: string;
+  sort: number;
+  created_at: string;
+  updated_at: string;
+}
+function mapGoal(r: GoalRow): Goal {
+  return { ...r, status: r.status as GoalStatus };
+}
+
+interface ScorecardRow {
+  id: number;
+  title: string;
+  week_of: string | null;
+  bonus_reward: string;
+  is_current: number;
+  created_at: string;
+  updated_at: string;
+}
+function mapScorecard(r: ScorecardRow): Scorecard {
+  return { ...r, is_current: r.is_current === 1 };
+}
+
+interface BonusRow {
+  id: number;
+  scorecard_id: number;
+  task: string;
+  reward: string;
+  done: number;
+  sort: number;
+}
+function mapBonus(r: BonusRow): ScorecardBonus {
+  return { ...r, done: r.done === 1 };
 }

@@ -109,3 +109,52 @@ export interface PlanItem {
   scheduled_state: ScheduledState;
   rationale: string;
 }
+
+// ---- Weekly goals (dashboard "Goals" tab) ----
+
+export const GOAL_STATUSES = ["active", "done"] as const;
+export type GoalStatus = (typeof GOAL_STATUSES)[number];
+
+/** A free-form goal in the simple "List" sub-tab. */
+export interface Goal {
+  id: number;
+  title: string;
+  notes: string;
+  status: GoalStatus;
+  sort: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/** A weekly focus scorecard (the structured "Scorecard" sub-tab). */
+export interface Scorecard {
+  id: number;
+  title: string;
+  week_of: string | null;
+  bonus_reward: string;
+  is_current: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/** A weighted, measurable row within a scorecard (progress toward a goal). */
+export interface ScorecardMetric {
+  id: number;
+  scorecard_id: number;
+  name: string;
+  progress: number;
+  goal: number;
+  /** Max score this row contributes (the "Score" weight column). */
+  weight: number;
+  sort: number;
+}
+
+/** A bonus task → reward pair, unlocked only on a full week. */
+export interface ScorecardBonus {
+  id: number;
+  scorecard_id: number;
+  task: string;
+  reward: string;
+  done: boolean;
+  sort: number;
+}
