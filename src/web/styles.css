@@ -143,6 +143,24 @@ main { padding: 18px 20px 40px; flex: 1; }
 .cardrow { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 4px; }
 .blocked { color: var(--crit); font-size: 11px; }
 
+/* per-task action buttons on Board cards */
+.task-actions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.task-act {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+.task-act:hover { color: var(--green); border-color: var(--green); box-shadow: var(--glow); }
+.task-act.done:hover { color: var(--green); border-color: var(--green); }
+.task-act.del { margin-left: auto; }
+.task-act.del:hover { color: var(--crit); border-color: var(--crit); box-shadow: none; }
+
 /* ---- Today ---- */
 .narrative {
   border: 1px solid var(--green);

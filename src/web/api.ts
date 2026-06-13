@@ -71,6 +71,27 @@ export async function fetchToday(): Promise<TodayData> {
   return r.json();
 }
 
+// ---- task actions (Board cards) ----
+
+export async function setTaskStatus(id: number, status: TaskStatus): Promise<void> {
+  const r = await fetch(`/api/tasks/${id}/status`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  });
+  if (!r.ok) throw new Error(`status ${r.status}`);
+}
+
+export async function completeTask(id: number): Promise<void> {
+  const r = await fetch(`/api/tasks/${id}/done`, { method: "POST" });
+  if (!r.ok) throw new Error(`done ${r.status}`);
+}
+
+export async function deleteTask(id: number): Promise<void> {
+  const r = await fetch(`/api/tasks/${id}`, { method: "DELETE" });
+  if (!r.ok) throw new Error(`delete ${r.status}`);
+}
+
 // ---- desktop app downloads ----
 
 export type DesktopPlatform = "mac" | "win";

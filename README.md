@@ -56,7 +56,7 @@ SPEAR_HOME=/tmp/spear-demo node dist/cli.js serve --port 4399 --open
 
 ```bash
 spear add "Fix prod outage in billing"                       # priority auto-inferred (→ critical)
-spear add "Ship onboarding revamp" --due 2026-09-01          # due date feeds priority + time-fit
+spear add "Ship onboarding revamp" --due 2026-09-01          # due date feeds priority + ordering
 spear add "Renew SSL cert" --no-llm                          # instant capture, no LLM
 spear add "Ship v2" --type feature --blocked-by 1            # depends on task #1 (override with --priority)
 
@@ -67,6 +67,9 @@ spear done 1 --all               # complete the whole task
 spear status 3 in_progress       # set status explicitly
 spear block 4 --by 1             # add / remove a dependency
 spear unblock 4 --by 1
+
+spear goal add "Run 20km this week"   # weekly goals (also on the dashboard Goals tab)
+spear goal list
 
 spear plan                       # FULL re-cluster of today's lanes (LLM if available)
 spear today                      # print the current execution flow
@@ -84,6 +87,25 @@ live over SSE; with no server running, the plan is refreshed inline so `today`/`
   lane without reshuffling the rest of your day** — a lane only lightly re-balances when overloaded.
   The full (LLM) re-cluster happens at `spear plan` and the morning job.
 - **Due-date aware.** Overdue / due-today tasks float to the top of their lane (⌛ / ⏰).
+
+## Dashboard
+
+`spear serve --open` opens a dark, Matrix-themed dashboard at http://127.0.0.1:4317 with three
+tabs, all live over SSE:
+
+- **Today** — the generated execution flow: parallel lanes, each lane's next step flagged ▶ now,
+  delegatable steps marked, overdue / due-today badges.
+- **Board** — tasks by status (Backlog · To Do · In Progress · Blocked · Done) with stage
+  progress and blockers. Each card has quick actions — **▶ start** (mark in progress),
+  **✓ done** (complete), and **✕** (delete) — and you can capture new tasks from the header.
+- **Goals** — weekly goals, with two sub-tabs:
+  - **List** — a simple, free-form goal list (add / inline-edit / tick off / delete).
+  - **Scorecard** — a weekly-focus card of weighted metrics
+    (`Task · Progress · Goal · Score · Weight · % Completion`) with a live Total, plus
+    **Bonus Tasks → Rewards** and an all-bonus reward. Score = `weight × min(progress/goal, 1)`;
+    completion glows green at ≥ 100%, red below.
+
+The header's **⤓ Desktop app** button installs spear as a native window (below).
 
 ## Desktop app (Electron)
 
@@ -151,14 +173,19 @@ spear import-notion --breakdown  # also break new tasks into stages
 ## Architecture
 
 - **SQLite** (`better-sqlite3`) is the source of truth: `tasks → stages → dependencies`,
-  `executors`, `daily_plans → plan_items`.
+  `executors`, `daily_plans → plan_items`, plus the weekly-goals tables
+  `goals` and `scorecards → scorecard_metrics / scorecard_bonuses`.
 - **Planner** = deterministic TypeScript graph (topo sort, independent-lane detection,
   critical path — unit-tested) + an LLM judgment layer (Claude `claude-opus-4-8`) that assigns
   executors, flags delegation, and writes the day's narrative.
-- **Server** = Fastify serving a JSON API, an SSE stream, and the built React SPA (dark Matrix theme).
+- **Server** = Fastify serving a JSON API (board / today / goals + task & goal mutations),
+  an SSE stream, the desktop-installer downloads (`/api/desktop/manifest`, `/download/:file`),
+  and the built React SPA (dark Matrix theme).
+- **Desktop** = an Electron shell (`electron/main.cjs`) that boots the server in-process and
+  opens a window; packaged with `electron-builder` (`npm run dist:mac` / `dist:win`).
 - **Real-time re-plan** = instant deterministic re-insert on every change + a debounced LLM refine.
 
 ```bash
-npm test          # 43 unit/integration tests (planner graph, service, LLM mocks, DTOs, replan, import)
+npm test          # 80 unit/integration tests (planner graph, service, goals scoring, desktop manifest, DTOs, replan, import)
 npm run dev -- <args>   # run the CLI from source via tsx
 ```

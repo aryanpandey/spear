@@ -10,6 +10,7 @@ import {
   nextOpenStage,
   openDependencies,
   recomputeTaskStatus,
+  removeTask,
   setTaskStatus,
   unblockTask,
 } from "./service.js";
@@ -111,5 +112,18 @@ describe("service flow advance + status rollup", () => {
     setTaskStatus(store, task.id, "backlog");
     recomputeTaskStatus(store, task.id);
     expect(store.getTask(task.id)!.status).toBe("backlog");
+  });
+
+  it("removeTask deletes the task, its stages, and re-settles dependents", () => {
+    const a = addTask(store, { title: "A", type: "feature" }).task;
+    const b = addTask(store, { title: "B", type: "chore", blockedBy: [a.id] }).task;
+    expect(store.getTask(b.id)!.status).toBe("blocked");
+
+    removeTask(store, a.id);
+    expect(store.getTask(a.id)).toBeUndefined();
+    expect(store.getStages(a.id)).toHaveLength(0);
+    // b no longer has an open blocker → unblocked
+    expect(openDependencies(store, b.id)).toEqual([]);
+    expect(store.getTask(b.id)!.status).toBe("todo");
   });
 });

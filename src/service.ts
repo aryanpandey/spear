@@ -152,6 +152,18 @@ export function unblockTask(store: Store, taskId: number, byTaskId: number): Tas
   return store.getTask(taskId)!;
 }
 
+/** Delete a task and its stages/dependencies (FK cascade); re-settle dependents. */
+export function removeTask(store: Store, taskId: number): void {
+  const dependents = store
+    .listDependencies()
+    .filter((d) => d.blocked_by_task_id === taskId)
+    .map((d) => d.task_id);
+  store.deleteTask(taskId);
+  for (const dep of dependents) {
+    if (store.getTask(dep)) recomputeTaskStatus(store, dep);
+  }
+}
+
 /** When a task changes, re-settle any tasks that depend on it. */
 function resettleDependents(store: Store, taskId: number): void {
   const dependents = store

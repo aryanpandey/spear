@@ -73,7 +73,7 @@ export function App() {
       </header>
       <main>
         {tab === "today" && today && <Today data={today} />}
-        {tab === "board" && board && <Board data={board} />}
+        {tab === "board" && board && <Board data={board} onChange={load} />}
         {tab === "goals" && <Goals />}
         {tab !== "goals" && !board && !today && !err && <div className="empty">loading…</div>}
       </main>

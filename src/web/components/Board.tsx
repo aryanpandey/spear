@@ -1,4 +1,5 @@
 import type { BoardData, BoardTask, TaskStatus } from "../api";
+import { setTaskStatus, completeTask, deleteTask } from "../api";
 
 const COLUMNS: { status: TaskStatus; label: string }[] = [
   { status: "backlog", label: "Backlog" },
@@ -8,7 +9,15 @@ const COLUMNS: { status: TaskStatus; label: string }[] = [
   { status: "done", label: "Done" },
 ];
 
-function TaskCard({ task }: { task: BoardTask }) {
+function TaskCard({ task, onChange }: { task: BoardTask; onChange: () => void }) {
+  const run = (fn: () => Promise<void>) => async () => {
+    try {
+      await fn();
+    } finally {
+      onChange();
+    }
+  };
+
   return (
     <div className="card">
       <div className="cardrow">
@@ -28,11 +37,32 @@ function TaskCard({ task }: { task: BoardTask }) {
       {task.openBlockers.length > 0 && (
         <div className="blocked">⛔ blocked by {task.openBlockers.map((b) => `#${b}`).join(", ")}</div>
       )}
+      <div className="task-actions">
+        {task.status !== "in_progress" && task.status !== "done" && (
+          <button className="task-act" title="Mark in progress" onClick={run(() => setTaskStatus(task.id, "in_progress"))}>
+            ▶ start
+          </button>
+        )}
+        {task.status !== "done" && (
+          <button className="task-act done" title="Mark complete" onClick={run(() => completeTask(task.id))}>
+            ✓ done
+          </button>
+        )}
+        <button
+          className="task-act del"
+          title="Delete task"
+          onClick={() => {
+            if (confirm(`Delete #${task.id} "${task.title}"?`)) void run(() => deleteTask(task.id))();
+          }}
+        >
+          ✕
+        </button>
+      </div>
     </div>
   );
 }
 
-export function Board({ data }: { data: BoardData }) {
+export function Board({ data, onChange }: { data: BoardData; onChange: () => void }) {
   return (
     <div className="board">
       {COLUMNS.map((col) => {
@@ -43,7 +73,7 @@ export function Board({ data }: { data: BoardData }) {
               {col.label} <span className="count">({tasks.length})</span>
             </h3>
             {tasks.map((t) => (
-              <TaskCard key={t.id} task={t} />
+              <TaskCard key={t.id} task={t} onChange={onChange} />
             ))}
             {tasks.length === 0 && <div className="muted" style={{ fontSize: 11 }}>—</div>}
           </div>

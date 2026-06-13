@@ -5,7 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Store } from "../db/store.js";
 import type { SpearConfig } from "../config/index.js";
-import { addTask, advanceTask, completeTask, setTaskStatus } from "../service.js";
+import { addTask, advanceTask, completeTask, removeTask, setTaskStatus } from "../service.js";
 import { breakdownForAdd } from "../breakdown/index.js";
 import { PRIORITIES, TASK_STATUSES, TASK_TYPES, type Priority, type TaskStatus, type TaskType } from "../types.js";
 import { GOAL_STATUSES, type GoalStatus } from "../types.js";
@@ -145,6 +145,17 @@ export function buildServer(store: Store, cfg: SpearConfig): SpearServer {
     const task = setTaskStatus(store, Number(req.params.id), status);
     replanner.requestReplan("adhoc");
     return { task };
+  });
+
+  app.delete<{ Params: { id: string } }>("/api/tasks/:id", async (req, reply) => {
+    const id = Number(req.params.id);
+    if (!store.getTask(id)) {
+      reply.code(404);
+      return { error: "not found" };
+    }
+    removeTask(store, id);
+    replanner.requestReplan("adhoc");
+    return { ok: true };
   });
 
   // ---- goals API (weekly goals tab; independent of the planner) ----
