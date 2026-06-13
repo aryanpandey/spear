@@ -13,6 +13,7 @@ Rules:
 - Otherwise: break the work into the smallest sensible set of sequential stages (often just one). Use kind "generic" unless a stage is clearly planning/implementation/testing/stage_testing. Don't add ceremony a small task doesn't need.
 - For every stage, set "delegatable_to": the executor kinds that could own it. Always include "self". Add "ai_agent" for work a coding/AI agent could do (implementation, research, drafting, writing tests), "ci" for automated test/build/deploy runs, "teammate" for human review or QA.
 - Estimate "effort" per stage and for the task overall: small, medium, or large.
+- Suggest a "priority" (critical/high/medium/low) from the task's urgency and impact.
 - Return a concise, cleaned "title".`;
 
 function userPrompt(req: BreakdownRequest): string {
@@ -45,7 +46,13 @@ function normalize(parsed: BreakdownOutput, req: BreakdownRequest): BreakdownRes
   if (stages.length === 0) {
     stages = [{ name: parsed.title || req.title, kind: "generic", effort: parsed.effort, delegatable_to: ["self"] }];
   }
-  return { title: parsed.title || req.title, type: parsed.type, stages, source: "llm" };
+  return {
+    title: parsed.title || req.title,
+    type: parsed.type,
+    stages,
+    source: "llm",
+    suggestedPriority: parsed.priority,
+  };
 }
 
 /** Run the LLM breakdown. Returns null when no API key / client is available. */

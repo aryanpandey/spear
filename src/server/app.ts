@@ -65,6 +65,7 @@ export function buildServer(store: Store, cfg: SpearConfig): SpearServer {
       description?: string;
       priority?: string;
       type?: string;
+      due?: string;
       blockedBy?: number[];
       useLlm?: boolean;
     };
@@ -72,8 +73,8 @@ export function buildServer(store: Store, cfg: SpearConfig): SpearServer {
       reply.code(400);
       return { error: "title required" };
     }
-    const priority = (body.priority as Priority) ?? cfg.defaultPriority;
-    if (!PRIORITIES.includes(priority)) {
+    const explicitPriority = body.priority ? (body.priority as Priority) : undefined;
+    if (explicitPriority && !PRIORITIES.includes(explicitPriority)) {
       reply.code(400);
       return { error: "invalid priority" };
     }
@@ -89,12 +90,15 @@ export function buildServer(store: Store, cfg: SpearConfig): SpearServer {
       useLlm: body.useLlm !== false,
       model: cfg.models.breakdown,
       effort: cfg.effort.breakdown,
+      due: body.due ?? null,
+      explicitPriority,
     });
     const { task } = addTask(store, {
       title: broken.title,
       description: body.description,
       type: broken.type,
-      priority,
+      priority: broken.priority,
+      due: body.due ?? null,
       blockedBy: body.blockedBy ?? [],
       stages: broken.stages,
       source: "web",

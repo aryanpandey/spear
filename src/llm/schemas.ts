@@ -12,6 +12,9 @@ export const StageSchema = z.object({
 export const BreakdownSchema = z.object({
   title: z.string().describe("Cleaned, concise task title"),
   type: z.enum(["feature", "bug", "chore", "research", "other"]),
+  priority: z
+    .enum(["critical", "high", "medium", "low"])
+    .describe("Suggested priority from the task's urgency and impact"),
   effort: z.enum(["small", "medium", "large"]).describe("Overall task effort"),
   stages: z.array(StageSchema),
 });

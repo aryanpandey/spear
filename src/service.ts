@@ -7,6 +7,7 @@ export interface AddTaskInput {
   description?: string;
   type?: TaskType;
   priority?: Priority;
+  due?: string | null;
   blockedBy?: number[];
   source?: string;
   external_id?: string | null;
@@ -36,6 +37,7 @@ export function addTask(store: Store, input: AddTaskInput): TaskWithStages {
     description: input.description,
     type: input.type ?? "other",
     priority: input.priority,
+    due: input.due ?? null,
     source: input.source ?? "cli",
     external_id: input.external_id ?? null,
     status: "todo",
