@@ -1,42 +1,48 @@
 import type { Store } from "../db/store.js";
-import type { DailyPlan } from "../types.js";
+import { todayDto } from "../server/dto.js";
+import { formatMinutes, type TimeOpts } from "./timefit.js";
+import type { DueBand } from "../util/time.js";
 import { c, scheduledBadge } from "../util/render.js";
 
-/** Render a persisted plan as a Matrix-flavored terminal view. */
-export function renderPlan(store: Store, plan: DailyPlan): string {
-  const items = store.getPlanItems(plan.id);
-  const execName = new Map(store.listExecutors().map((e) => [e.id, e.name]));
-  const lines: string[] = [];
+function dueBadge(band: DueBand): string {
+  if (band === "overdue") return "  " + c.red("⌛ overdue");
+  if (band === "today") return "  " + c.yellow("⏰ today");
+  return "";
+}
 
-  const tag = plan.model ? "llm" : "deterministic";
-  lines.push(c.brightGreen(`░ EXECUTION FLOW — ${plan.plan_date} ${c.dim(`(${plan.trigger} · ${tag})`)}`));
-  lines.push(c.green(wrap(plan.narrative, 92)));
+/** Render the current plan as a Matrix-flavored terminal view (lanes numbered 1..N). */
+export function renderPlan(store: Store, time?: TimeOpts): string {
+  const dto = todayDto(store, time);
+  const lines: string[] = [];
+  if (!dto.plan) return c.dim("no current plan — run `spear plan`.");
+
+  const tag = dto.plan.model ? "llm" : "deterministic";
+  lines.push(c.brightGreen(`░ EXECUTION FLOW — ${dto.plan.plan_date} ${c.dim(`(${dto.plan.trigger} · ${tag})`)}`));
+  lines.push(c.green(wrap(dto.plan.narrative, 92)));
+  if (dto.timeBudget) {
+    const b = dto.timeBudget;
+    lines.push(
+      c.dim(
+        `time left ${formatMinutes(b.leftMin)} · planned ${formatMinutes(b.plannedMin)} · ${b.fitsCount} fit / ${b.spillCount} spill`,
+      ),
+    );
+  }
   lines.push("");
 
-  if (items.length === 0) {
+  if (dto.lanes.length === 0) {
     lines.push(c.dim("no open work — inbox zero."));
     return lines.join("\n");
   }
 
-  const byLane = new Map<number, typeof items>();
-  for (const it of items) {
-    if (!byLane.has(it.lane)) byLane.set(it.lane, []);
-    byLane.get(it.lane)!.push(it);
-  }
-
-  const sortedLanes = [...byLane.keys()].sort((a, b) => a - b);
-  sortedLanes.forEach((lane, idx) => {
-    const laneItems = byLane.get(lane)!.sort((a, b) => a.order_in_lane - b.order_in_lane);
-    const owner = laneItems[0].executor_id ? execName.get(laneItems[0].executor_id) ?? "?" : "unassigned";
-    lines.push(c.dim(`lane ${idx + 1} · `) + c.bold(owner));
-    for (const it of laneItems) {
-      const task = store.getTask(it.task_id);
-      const stage = store.getStage(it.stage_id);
-      const badge = scheduledBadge(it.scheduled_state);
+  dto.lanes.forEach((lane, idx) => {
+    lines.push(c.dim(`lane ${idx + 1} · `) + c.bold(lane.executor?.name ?? "unassigned"));
+    for (const it of lane.items) {
+      const name = it.fitsToday ? c.bold(it.stage.name) : c.dim(it.stage.name);
       const deleg = it.is_delegation_candidate ? c.cyan("  ⇄ delegate") : "";
+      const spill = it.fitsToday ? "" : c.gray("  · spills to tomorrow");
       const why = it.rationale ? c.dim(`  — ${it.rationale}`) : "";
       lines.push(
-        `  ${badge}  ${c.bold(stage?.name ?? `stage#${it.stage_id}`)} ${c.dim(`(#${it.task_id} ${task?.title ?? ""})`)}${deleg}${why}`,
+        `  ${scheduledBadge(it.scheduled_state)}  ${name} ${c.dim(`(#${it.task.id} ${it.task.title})`)}${dueBadge(it.dueBand)}${deleg}${spill}${why}`,
       );
     }
   });

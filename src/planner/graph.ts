@@ -9,6 +9,13 @@ import {
 } from "../types.js";
 import type { PlanItemInput } from "../db/store.js";
 import { clusterByTitle, incrementalGroups, phaseRank } from "./grouping.js";
+import { dueBand } from "../util/time.js";
+
+/** overdue=0, today=1 float to the top of a lane; everything else=2. */
+function dueFloat(due: string | null | undefined, now: Date): number {
+  const band = dueBand(due, now);
+  return band === "overdue" ? 0 : band === "today" ? 1 : 2;
+}
 
 // ---- Plain inputs (decoupled from the DB so the graph is trivially testable) ----
 
@@ -18,6 +25,8 @@ export interface PlannerTask {
   status: TaskStatus;
   /** Used by the deterministic planner to group similar tasks into one lane. */
   title?: string;
+  /** Due date — overdue/today float to the top of their lane. */
+  due?: string | null;
 }
 
 export interface PlannerStage {
@@ -230,6 +239,8 @@ export function deterministicPlan(
     for (const list of input.stages.values()) for (const s of list) stageById.set(s.id, s);
   }
   const titleById = new Map(input.tasks.map((t) => [t.id, t.title ?? ""]));
+  const dueById = new Map(input.tasks.map((t) => [t.id, t.due ?? null]));
+  const now = new Date();
 
   // Action order = priority, then critical path, then id (graph.ready/waiting already sorted).
   const ordered = [...graph.ready, ...graph.waiting];
@@ -246,9 +257,13 @@ export function deterministicPlan(
       ? incrementalGroups(ordered, opts.existingLanes ?? new Map(), maxLanes, titleById)
       : clusterByTitle(ordered.map((id) => ({ id, title: titleById.get(id) ?? "" })), maxLanes);
 
-  // Order within each lane: phase (design → implementation → testing), then priority.
+  // Order within each lane: overdue/due-today float to the top, then phase
+  // (design → implementation → testing), then priority.
   for (const g of groups) {
     g.sort((a, b) => {
+      const da = dueFloat(dueById.get(a), now);
+      const db = dueFloat(dueById.get(b), now);
+      if (da !== db) return da - db;
       const pa = phaseRank(titleById.get(a) ?? "", firstStageKind(a));
       const pb = phaseRank(titleById.get(b) ?? "", firstStageKind(b));
       if (pa !== pb) return pa - pb;

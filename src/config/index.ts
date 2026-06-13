@@ -16,6 +16,10 @@ export interface SpearConfig {
   defaultPriority: Priority;
   /** Maximum number of lanes in the execution flow; extra themes are folded in. */
   maxLanes: number;
+  /** Minutes each effort level is estimated to take (for time-fit). */
+  effortMinutes: { small: number; medium: number; large: number };
+  /** Local end-of-workday, used to compute "time left today". */
+  workdayEnd: { hour: number; minute: number };
   /** Debounce window (ms) before an ad-hoc change triggers an LLM re-plan refine. */
   replanDebounceMs: number;
 }
@@ -27,6 +31,8 @@ export const DEFAULT_CONFIG: SpearConfig = {
   effort: { breakdown: "medium", planner: "high" },
   defaultPriority: "medium",
   maxLanes: 6,
+  effortMinutes: { small: 30, medium: 120, large: 240 },
+  workdayEnd: { hour: 18, minute: 0 },
   replanDebounceMs: 4000,
 };
 
@@ -55,6 +61,8 @@ function mergeConfig(base: SpearConfig, over: Partial<SpearConfig>): SpearConfig
     morning: { ...base.morning, ...(over.morning ?? {}) },
     models: { ...base.models, ...(over.models ?? {}) },
     effort: { ...base.effort, ...(over.effort ?? {}) },
+    effortMinutes: { ...base.effortMinutes, ...(over.effortMinutes ?? {}) },
+    workdayEnd: { ...base.workdayEnd, ...(over.workdayEnd ?? {}) },
   };
 }
 

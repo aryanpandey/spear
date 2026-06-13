@@ -3,6 +3,7 @@ import { openStore } from "../context.js";
 import { loadConfig } from "../config/index.js";
 import { buildAndSavePlan } from "../planner/build.js";
 import { renderPlan } from "../planner/render.js";
+import { buildTimeOpts } from "../planner/timefit.js";
 import { PLAN_TRIGGERS, type PlanTrigger } from "../types.js";
 import { assertEnum } from "../util/validate.js";
 import { c } from "../util/render.js";
@@ -30,7 +31,8 @@ export function registerPlan(program: Command): void {
           effort: cfg.effort.planner,
           maxLanes: cfg.maxLanes,
         });
-        console.log(renderPlan(store, plan));
+        void plan;
+        console.log(renderPlan(store, buildTimeOpts(cfg.effortMinutes, cfg.workdayEnd)));
         if (!usedLlm && opts.llm !== false && !process.env.ANTHROPIC_API_KEY) {
           console.log(c.dim("\nhint: set ANTHROPIC_API_KEY for LLM-optimized planning"));
         }

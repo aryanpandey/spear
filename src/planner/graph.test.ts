@@ -18,16 +18,25 @@ function stage(
 }
 
 function input(
-  tasks: { id: number; priority?: Priority; status?: string; title?: string; stages: PlannerStage[] }[],
+  tasks: { id: number; priority?: Priority; status?: string; title?: string; due?: string | null; stages: PlannerStage[] }[],
   deps: [number, number][] = [],
 ): PlannerInput {
   const stages = new Map<number, PlannerStage[]>();
   for (const t of tasks) stages.set(t.id, t.stages);
   return {
-    tasks: tasks.map((t) => ({ id: t.id, priority: t.priority ?? "medium", status: (t.status ?? "todo") as any, title: t.title })),
+    tasks: tasks.map((t) => ({ id: t.id, priority: t.priority ?? "medium", status: (t.status ?? "todo") as any, title: t.title, due: t.due })),
     stages,
     deps: deps.map(([task_id, blocked_by_task_id]) => ({ task_id, blocked_by_task_id })),
   };
+}
+
+function dayOffset(n: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 describe("buildPlannerGraph", () => {
@@ -157,6 +166,25 @@ describe("deterministicPlan", () => {
     expect(grouped[0].task_id).toBe(2);
     expect(grouped[1].task_id).toBe(1);
     expect(grouped[0].lane).toBe(grouped[1].lane);
+  });
+
+  it("floats overdue / due-today tasks to the top of their lane", () => {
+    const { items } = deterministicPlan(
+      input([
+        { id: 1, title: "Search Ranking", due: dayOffset(30), stages: [stage("small")] }, // far
+        { id: 2, title: "Search Indexing", due: dayOffset(-1), stages: [stage("small")] }, // overdue
+        { id: 3, title: "Search Relevance", due: dayOffset(0), stages: [stage("small")] }, // today
+        { id: 4, title: "Alpha unrelated one", stages: [stage("small")] },
+        { id: 5, title: "Beta unrelated two", stages: [stage("small")] },
+        { id: 6, title: "Gamma unrelated three", stages: [stage("small")] },
+      ]),
+      execs,
+    );
+    const searchItems = items
+      .filter((i) => [1, 2, 3].includes(i.task_id))
+      .sort((a, b) => a.order_in_lane - b.order_in_lane);
+    expect(new Set(searchItems.map((i) => i.lane)).size).toBe(1); // one Search lane
+    expect(searchItems.map((i) => i.task_id)).toEqual([2, 3, 1]); // overdue, today, then far
   });
 
   it("flags delegatable stages and marks blocked flows waiting", () => {

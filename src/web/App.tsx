@@ -12,10 +12,12 @@ export function App() {
   const [today, setToday] = useState<TodayData | null>(null);
   const [updated, setUpdated] = useState<number | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [hours, setHours] = useState<string>("");
 
   const load = useCallback(async () => {
     try {
-      const [b, t] = await Promise.all([fetchBoard(), fetchToday()]);
+      const h = hours.trim() === "" ? undefined : Number(hours);
+      const [b, t] = await Promise.all([fetchBoard(), fetchToday(h)]);
       setBoard(b);
       setToday(t);
       setUpdated(Date.now());
@@ -23,7 +25,7 @@ export function App() {
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     }
-  }, []);
+  }, [hours]);
 
   // Live updates via SSE; the server pushes on every mutation/re-plan.
   // A slow interval is a safety net if the stream drops.
@@ -54,6 +56,19 @@ export function App() {
           </button>
         </div>
         <div className="spacer" />
+        {tab === "today" && (
+          <label className="hours-ctl">
+            hrs left
+            <input
+              type="number"
+              min="0"
+              step="0.5"
+              value={hours}
+              placeholder="auto"
+              onChange={(e) => setHours(e.target.value)}
+            />
+          </label>
+        )}
         <span className="status">
           {err ? (
             <span style={{ color: "var(--crit)" }}>● {err}</span>

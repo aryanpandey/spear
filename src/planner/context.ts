@@ -22,7 +22,7 @@ export function buildPlannerInput(store: Store): PlannerInput {
     .listDependencies()
     .map((d) => ({ task_id: d.task_id, blocked_by_task_id: d.blocked_by_task_id }));
   return {
-    tasks: tasks.map((t) => ({ id: t.id, priority: t.priority, status: t.status, title: t.title })),
+    tasks: tasks.map((t) => ({ id: t.id, priority: t.priority, status: t.status, title: t.title, due: t.due })),
     stages,
     deps,
   };
