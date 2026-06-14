@@ -31,6 +31,12 @@ jobs:
           node-version: 20
           cache: npm
 
+      # node-gyp (rebuilding better-sqlite3 for Node + Electron) needs distutils,
+      # which was removed from Python 3.12. Pin 3.11 so the native build works.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
       - name: Install deps
         run: npm ci
 
