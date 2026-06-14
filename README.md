@@ -127,11 +127,31 @@ npm run electron:dev # run the desktop shell locally without packaging
 ```
 
 > Native installers are platform-specific: build the `.dmg` on macOS and the `.exe` on
-> Windows (or use CI / a Windows box — cross-building Windows from macOS needs Wine).
-> `better-sqlite3` is rebuilt for Electron's ABI during packaging (`npmRebuild`); the
-> `dist:*` scripts then run `npm rebuild better-sqlite3` (a `postdist` hook) to restore the
-> plain-Node ABI so the `spear` CLI keeps working. The mac build is unsigned
+> Windows (or use CI — below). `better-sqlite3` is rebuilt for Electron's ABI during packaging
+> (`npmRebuild`); the `dist:*` scripts then run `npm rebuild better-sqlite3` (a `postdist` hook)
+> to restore the plain-Node ABI so the `spear` CLI keeps working. The mac build is unsigned
 > (`identity: null`); right-click → Open the first time.
+
+### Releases & auto-update
+
+The app self-updates from GitHub Releases via `electron-updater`: on launch a packaged build
+checks the latest release, downloads a newer version in the background, and installs it on quit.
+
+Releases are built and published by CI — **`.github/workflows/release.yml`** builds the macOS
+`.dmg` and the Windows `.exe`/portable on their native runners and publishes them (plus the
+`latest*.yml` update feeds) to the GitHub Release. To cut one:
+
+```bash
+npm version patch       # bump package.json (e.g. 0.1.0 → 0.1.1) + commit + tag v0.1.1
+git push --follow-tags  # pushing the v* tag triggers the release workflow
+```
+
+Notes:
+- Installed apps auto-update **only from a build that already has the updater** — install one
+  post-`electron-updater` build manually once; future versions then come down automatically.
+- **macOS auto-update requires code signing** (Squirrel.Mac won't update an unsigned app). Add an
+  Apple Developer cert (set `mac.identity` + notarization) to enable it; Windows (NSIS) updates
+  unsigned. Until signed, mac users update by downloading the new `.dmg`.
 
 ## Delegation roster
 

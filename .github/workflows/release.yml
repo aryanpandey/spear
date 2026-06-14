@@ -1,0 +1,45 @@
+name: release
+
+# Build the desktop app on macOS + Windows and publish the installers (plus the
+# electron-updater metadata) to the GitHub Release for the pushed tag.
+# Trigger: push a tag like v0.1.1 (match package.json "version"), or run manually.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: "--mac"
+          - os: windows-latest
+            target: "--win"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Build (server + web)
+        run: npm run build
+
+      - name: Build & publish installer
+        run: npx --no-install electron-builder ${{ matrix.target }} --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # macOS build is unsigned (identity: null) — don't hunt for a cert.
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"

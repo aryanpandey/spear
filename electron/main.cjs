@@ -6,6 +6,7 @@ const { app, BrowserWindow, shell } = require("electron");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 const http = require("node:http");
+const { autoUpdater } = require("electron-updater");
 
 const PORT = Number(process.env.SPEAR_PORT || 4317);
 const URL = `http://127.0.0.1:${PORT}`;
@@ -64,6 +65,21 @@ function createWindow() {
   });
 }
 
+// Check GitHub Releases for a newer version, download in the background, and
+// install on quit. Only in a packaged build (publish feed baked in via
+// electron-builder's app-update.yml). Errors (e.g. an unsigned macOS build,
+// which Squirrel.Mac can't update) are logged, not fatal.
+function checkForUpdates() {
+  autoUpdater.autoDownload = true;
+  autoUpdater.on("error", (e) => console.error("[spear] update error:", e?.message || e));
+  autoUpdater.on("update-available", (i) => console.log("[spear] update available:", i?.version));
+  autoUpdater.on("update-not-available", () => console.log("[spear] up to date"));
+  autoUpdater.on("update-downloaded", (i) =>
+    console.log("[spear] update", i?.version, "downloaded — installs on quit"),
+  );
+  autoUpdater.checkForUpdatesAndNotify().catch((e) => console.error("[spear] update check failed:", e?.message || e));
+}
+
 app.whenReady().then(async () => {
   try {
     await boot();
@@ -72,6 +88,7 @@ app.whenReady().then(async () => {
   }
   await waitForServer();
   createWindow();
+  if (app.isPackaged) checkForUpdates();
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
