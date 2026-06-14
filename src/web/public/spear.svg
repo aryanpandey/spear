@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <g fill="#00ff41" stroke="#00ff41" stroke-linejoin="round">
+    <path d="M512 150
+             C 574 234 600 302 600 350
+             C 600 394 558 418 512 426
+             C 466 418 424 394 424 350
+             C 424 302 450 234 512 150 Z"/>
+    <path d="M495 421 L529 421 L521 466 L503 466 Z"/>
+    <rect x="501" y="458" width="22" height="424" rx="11"/>
+    <rect x="493" y="876" width="38" height="16" rx="8"/>
+  </g>
+  <g stroke="#05210f" stroke-width="8" stroke-linecap="round" fill="none">
+    <line x1="512" y1="184" x2="512" y2="410"/>
+    <line x1="487" y1="438" x2="537" y2="447"/>
+    <line x1="485" y1="455" x2="535" y2="464"/>
+  </g>
+</svg>

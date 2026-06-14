@@ -82,13 +82,15 @@
         "dmg"
       ],
       "category": "public.app-category.productivity",
+      "icon": "build/icon.png",
       "identity": null
     },
     "win": {
       "target": [
         "nsis",
         "portable"
-      ]
+      ],
+      "icon": "build/icon.png"
     }
   }
 }

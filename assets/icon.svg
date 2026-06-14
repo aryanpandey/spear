@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0a160c"/>
+      <stop offset="1" stop-color="#040703"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="12" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- app-icon backdrop -->
+  <rect width="1024" height="1024" rx="224" fill="url(#bg)"/>
+  <rect x="22" y="22" width="980" height="980" rx="202" fill="none" stroke="#0f3d1c" stroke-width="6"/>
+
+  <!-- spear (phosphor green, glowing) -->
+  <g filter="url(#glow)" fill="#00ff41" stroke="#00ff41" stroke-linejoin="round">
+    <!-- spearhead (leaf) -->
+    <path d="M512 150
+             C 574 234 600 302 600 350
+             C 600 394 558 418 512 426
+             C 466 418 424 394 424 350
+             C 424 302 450 234 512 150 Z"/>
+    <!-- socket -->
+    <path d="M495 421 L529 421 L521 466 L503 466 Z"/>
+    <!-- shaft -->
+    <rect x="501" y="458" width="22" height="424" rx="11"/>
+    <!-- butt cap -->
+    <rect x="493" y="876" width="38" height="16" rx="8"/>
+  </g>
+
+  <!-- midrib + lashing (dark, for definition) -->
+  <g stroke="#05210f" stroke-width="8" stroke-linecap="round" fill="none">
+    <line x1="512" y1="184" x2="512" y2="410"/>
+    <line x1="487" y1="438" x2="537" y2="447"/>
+    <line x1="485" y1="455" x2="535" y2="464"/>
+  </g>
+</svg>

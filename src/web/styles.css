@@ -65,11 +65,18 @@ header.bar {
 }
 
 .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-weight: 700;
   letter-spacing: 4px;
   color: var(--green);
   text-shadow: var(--glow);
   text-transform: uppercase;
+}
+.brand-logo {
+  flex: none;
+  filter: drop-shadow(0 0 4px rgba(0, 255, 65, 0.55));
 }
 .brand .caret { animation: blink 1.1s step-end infinite; }
 @keyframes blink { 50% { opacity: 0; } }

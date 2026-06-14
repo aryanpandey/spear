@@ -5,6 +5,7 @@ import { Today } from "./components/Today";
 import { Goals } from "./components/Goals";
 import { AddTask } from "./components/AddTask";
 import { DesktopButton } from "./components/DesktopButton";
+import { Logo } from "./components/Logo";
 import { fetchBoard, fetchToday, type BoardData, type TodayData } from "./api";
 
 type Tab = "today" | "board" | "goals";
@@ -59,6 +60,7 @@ export function App() {
       <Rain />
       <header className="bar">
         <span className="brand">
+          <Logo />
           spear<span className="caret">_</span>
         </span>
         <div className="tabs">
