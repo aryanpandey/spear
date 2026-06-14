@@ -80,7 +80,7 @@ export interface TodayItemDto {
   rationale: string;
   due: string | null;
   dueBand: DueBand;
-  task: { id: number; title: string; priority: Priority; type: TaskType };
+  task: { id: number; title: string; priority: Priority; type: TaskType; status: TaskStatus };
   stage: { id: number; name: string; kind: StageKind; status: StageStatus; effort: Effort | null };
 }
 
@@ -121,7 +121,7 @@ export function todayDto(store: Store): TodayDto {
       rationale: it.rationale,
       due: task.due,
       dueBand: dueBand(task.due, now),
-      task: { id: task.id, title: task.title, priority: task.priority, type: task.type },
+      task: { id: task.id, title: task.title, priority: task.priority, type: task.type, status: task.status },
       stage: { id: stage.id, name: stage.name, kind: stage.kind, status: stage.status, effort: stage.effort },
     });
   }

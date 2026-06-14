@@ -1,4 +1,13 @@
-import { type DueBand, type ScheduledState, type TodayData, type TodayItem, type TodayLane } from "../api";
+import {
+  setTaskStatus,
+  completeTask,
+  deleteTask,
+  type DueBand,
+  type ScheduledState,
+  type TodayData,
+  type TodayItem,
+  type TodayLane,
+} from "../api";
 
 const SCHED_LABEL: Record<ScheduledState, string> = {
   start_now: "▶ now",
@@ -17,9 +26,17 @@ function DueBadge({ band }: { band: DueBand }) {
 // name. Custom-named stages are already descriptive and stand on their own.
 const PHASE_KINDS = ["planning", "design", "implementation", "testing", "stage_testing"];
 
-function Item({ item }: { item: TodayItem }) {
+function Item({ item, onChange }: { item: TodayItem; onChange: () => void }) {
   const isPhase = PHASE_KINDS.includes(item.stage.kind);
   const title = isPhase ? `${item.task.title} · ${item.stage.name}` : item.stage.name;
+  // Actions operate on the whole task (a Today item is one of its stages).
+  const run = (fn: () => Promise<void>) => async () => {
+    try {
+      await fn();
+    } finally {
+      onChange();
+    }
+  };
   return (
     <div className={`card item ${item.scheduled_state}`}>
       <div className="cardrow">
@@ -36,11 +53,30 @@ function Item({ item }: { item: TodayItem }) {
         {isPhase ? "" : ` ${item.task.title}`}
       </div>
       {item.rationale && <div className="why">{item.rationale}</div>}
+      <div className="task-actions">
+        {item.task.status !== "in_progress" && (
+          <button className="task-act" title="Mark task in progress" onClick={run(() => setTaskStatus(item.task.id, "in_progress"))}>
+            ▶ start
+          </button>
+        )}
+        <button className="task-act done" title="Complete the whole task" onClick={run(() => completeTask(item.task.id))}>
+          ✓ done
+        </button>
+        <button
+          className="task-act del"
+          title="Delete task"
+          onClick={() => {
+            if (confirm(`Delete #${item.task.id} "${item.task.title}"?`)) void run(() => deleteTask(item.task.id))();
+          }}
+        >
+          ✕
+        </button>
+      </div>
     </div>
   );
 }
 
-function Lane({ lane, number }: { lane: TodayLane; number: number }) {
+function Lane({ lane, number, onChange }: { lane: TodayLane; number: number; onChange: () => void }) {
   return (
     <div className="lane">
       <div className="lane-head">
@@ -49,13 +85,13 @@ function Lane({ lane, number }: { lane: TodayLane; number: number }) {
         {lane.executor && <span className="ek">{lane.executor.kind}</span>}
       </div>
       {lane.items.map((it) => (
-        <Item key={`${it.task.id}-${it.stage.id}`} item={it} />
+        <Item key={`${it.task.id}-${it.stage.id}`} item={it} onChange={onChange} />
       ))}
     </div>
   );
 }
 
-export function Today({ data }: { data: TodayData }) {
+export function Today({ data, onChange }: { data: TodayData; onChange: () => void }) {
   if (!data.plan) {
     return <div className="empty">No current plan. Run <code>spear plan</code> to generate today's execution flow.</div>;
   }
@@ -73,7 +109,7 @@ export function Today({ data }: { data: TodayData }) {
       ) : (
         <div className="lanes">
           {data.lanes.map((l, i) => (
-            <Lane key={l.lane} lane={l} number={i + 1} />
+            <Lane key={l.lane} lane={l} number={i + 1} onChange={onChange} />
           ))}
         </div>
       )}

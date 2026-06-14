@@ -44,7 +44,7 @@ export interface TodayItem {
   rationale: string;
   due: string | null;
   dueBand: DueBand;
-  task: { id: number; title: string; priority: Priority; type: TaskType };
+  task: { id: number; title: string; priority: Priority; type: TaskType; status: TaskStatus };
   stage: { id: number; name: string; kind: StageKind; status: StageStatus; effort: string | null };
 }
 

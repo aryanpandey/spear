@@ -99,7 +99,7 @@ export function App() {
         {tab === "today" && (
           <>
             <AddTask onAdded={load} />
-            {today && <Today data={today} />}
+            {today && <Today data={today} onChange={load} />}
           </>
         )}
         {tab === "board" && board && <Board data={board} onChange={load} />}
