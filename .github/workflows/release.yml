@@ -37,17 +37,9 @@ jobs:
         with:
           python-version: "3.11"
 
-      # better-sqlite3 has no Windows prebuilt → it compiles from source, but the
-      # node-gyp it bundles can't find Visual Studio 2022 on the runner. Force a
-      # modern node-gyp that detects VS 2022.
-      - name: Modern node-gyp (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          npm install -g node-gyp@latest
-          $p = (npm prefix -g) + "\node_modules\node-gyp\bin\node-gyp.js"
-          "npm_config_node_gyp=$p" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-
+      # better-sqlite3 has no Windows prebuilt, so it compiles from source. The
+      # node-gyp it would otherwise use (9.x) can't find VS 2022 on the runner —
+      # an npm `override` (package.json) forces node-gyp >=10, which can.
       - name: Install deps
         run: npm ci
         env:
