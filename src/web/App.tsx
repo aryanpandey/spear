@@ -3,6 +3,7 @@ import { Rain } from "./components/Rain";
 import { Board } from "./components/Board";
 import { Today } from "./components/Today";
 import { Goals } from "./components/Goals";
+import { AddTask } from "./components/AddTask";
 import { DesktopButton } from "./components/DesktopButton";
 import { fetchBoard, fetchToday, type BoardData, type TodayData } from "./api";
 
@@ -72,7 +73,12 @@ export function App() {
         </span>
       </header>
       <main>
-        {tab === "today" && today && <Today data={today} />}
+        {tab === "today" && (
+          <>
+            <AddTask onAdded={load} />
+            {today && <Today data={today} />}
+          </>
+        )}
         {tab === "board" && board && <Board data={board} onChange={load} />}
         {tab === "goals" && <Goals />}
         {tab !== "goals" && !board && !today && !err && <div className="empty">loading…</div>}

@@ -71,7 +71,22 @@ export async function fetchToday(): Promise<TodayData> {
   return r.json();
 }
 
-// ---- task actions (Board cards) ----
+// ---- task create / actions ----
+
+/**
+ * Create a task through the same pipeline as `spear add` (server-side breakdown +
+ * replan). Omit `priority` to let the server auto-infer it.
+ */
+export async function createTask(title: string, priority?: Priority): Promise<void> {
+  const body: { title: string; priority?: Priority } = { title };
+  if (priority) body.priority = priority;
+  const r = await fetch("/api/tasks", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error(`add ${r.status}`);
+}
 
 export async function setTaskStatus(id: number, status: TaskStatus): Promise<void> {
   const r = await fetch(`/api/tasks/${id}/status`, {

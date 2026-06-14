@@ -94,10 +94,12 @@ live over SSE; with no server running, the plan is refreshed inline so `today`/`
 tabs, all live over SSE:
 
 - **Today** — the generated execution flow: parallel lanes, each lane's next step flagged ▶ now,
-  delegatable steps marked, overdue / due-today badges.
+  delegatable steps marked, overdue / due-today badges. An **add-task bar** sits on top: describe
+  a task in plain English and it runs through the same breakdown + replan pipeline as `spear add`
+  — pick a priority or leave it on **auto** to let spear infer one.
 - **Board** — tasks by status (Backlog · To Do · In Progress · Blocked · Done) with stage
   progress and blockers. Each card has quick actions — **▶ start** (mark in progress),
-  **✓ done** (complete), and **✕** (delete) — and you can capture new tasks from the header.
+  **✓ done** (complete), and **✕** (delete).
 - **Goals** — weekly goals, with two sub-tabs:
   - **List** — a simple, free-form goal list (add / inline-edit / tick off / delete).
   - **Scorecard** — a weekly-focus card of weighted metrics

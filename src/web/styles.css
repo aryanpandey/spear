@@ -161,6 +161,52 @@ main { padding: 18px 20px 40px; flex: 1; }
 .task-act.del { margin-left: auto; }
 .task-act.del:hover { color: var(--crit); border-color: var(--crit); box-shadow: none; }
 
+/* ---- add task (Today tab) ---- */
+.add-task {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  padding: 6px 10px;
+}
+.add-task:focus-within { border-color: var(--green); box-shadow: var(--glow); }
+.add-task-caret { color: var(--green); }
+.add-task-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 4px 2px;
+}
+.add-task-input:focus { outline: none; }
+.add-task-input::placeholder { color: var(--text-dim); }
+.add-task-pri {
+  background: var(--panel-solid);
+  border: 1px solid var(--border);
+  color: var(--green);
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 3px 6px;
+}
+.add-task-btn {
+  background: transparent;
+  border: 1px solid var(--green);
+  color: var(--green);
+  font-family: var(--mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 4px 16px;
+  cursor: pointer;
+}
+.add-task-btn:hover:not(:disabled) { background: var(--green); color: var(--bg); box-shadow: var(--glow); }
+.add-task-btn:disabled { opacity: 0.4; cursor: default; }
+.add-task-err { color: var(--crit); font-size: 11px; }
+
 /* ---- Today ---- */
 .narrative {
   border: 1px solid var(--green);
