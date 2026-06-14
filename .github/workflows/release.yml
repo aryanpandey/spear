@@ -20,7 +20,9 @@ jobs:
         include:
           - os: macos-latest
             target: "--mac"
-          - os: windows-latest
+          # Pin to windows-2022 (VS 2022 / v17). windows-latest ships VS 18 (2026),
+          # which node-gyp can't detect ("unknown version") → native build fails.
+          - os: windows-2022
             target: "--win"
     runs-on: ${{ matrix.os }}
     steps:
