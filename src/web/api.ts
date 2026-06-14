@@ -120,6 +120,7 @@ export interface DesktopArtifact {
 
 export interface DesktopManifest {
   version: string;
+  source?: "github" | "local";
   mac: DesktopArtifact | null;
   win: DesktopArtifact | null;
 }

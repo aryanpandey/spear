@@ -37,7 +37,7 @@ export function buildServer(store: Store, cfg: SpearConfig): SpearServer {
   app.get("/api/executors", async () => store.listExecutors());
 
   // ---- desktop app downloads ----
-  app.get("/api/desktop/manifest", async () => desktopManifest());
+  app.get("/api/desktop/manifest", async () => await desktopManifest());
   app.get<{ Params: { file: string } }>("/download/:file", async (req, reply) => {
     const name = path.basename(req.params.file); // prevent path traversal
     const full = path.join(releaseDir(), name);

@@ -115,8 +115,8 @@ spear can run as a native desktop window instead of a browser tab. The Electron 
 (`electron/main.cjs`) boots the same server in-process and shares your `~/.spear` data.
 
 **Get it from the dashboard.** Open the dashboard in your browser and click **⤓ Desktop app**
-in the header — it detects your OS (macOS / Windows) and downloads the matching installer.
-The download is served by the local server from the `release/` directory.
+in the header — it detects your OS (macOS / Windows) and downloads the matching installer from the
+**latest GitHub Release** (falling back to a locally-built `release/` file if GitHub is unreachable).
 
 **Build the installers** (writes to `release/`):
 
