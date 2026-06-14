@@ -2,7 +2,7 @@
 //
 // It boots the spear server in-process (sharing ~/.spear with the CLI) and opens
 // a window onto the local dashboard. Built dist/ is bundled by electron-builder.
-const { app, BrowserWindow, shell } = require("electron");
+const { app, BrowserWindow, shell, dialog, ipcMain } = require("electron");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 const http = require("node:http");
@@ -49,7 +49,11 @@ function createWindow() {
     backgroundColor: "#060a06", // matches the Matrix theme; avoids white flash
     title: "spear",
     autoHideMenuBar: true,
-    webPreferences: { contextIsolation: true, nodeIntegration: false },
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      preload: path.join(__dirname, "preload.cjs"),
+    },
   });
   win.loadURL(URL);
   // Open any external links (e.g. downloads) in the user's browser, not the app.
@@ -65,20 +69,83 @@ function createWindow() {
   });
 }
 
-// Check GitHub Releases for a newer version, download in the background, and
-// install on quit. Only in a packaged build (publish feed baked in via
-// electron-builder's app-update.yml). Errors (e.g. an unsigned macOS build,
-// which Squirrel.Mac can't update) are logged, not fatal.
-function checkForUpdates() {
-  autoUpdater.autoDownload = true;
-  autoUpdater.on("error", (e) => console.error("[spear] update error:", e?.message || e));
-  autoUpdater.on("update-available", (i) => console.log("[spear] update available:", i?.version));
-  autoUpdater.on("update-not-available", () => console.log("[spear] up to date"));
-  autoUpdater.on("update-downloaded", (i) =>
-    console.log("[spear] update", i?.version, "downloaded — installs on quit"),
-  );
-  autoUpdater.checkForUpdatesAndNotify().catch((e) => console.error("[spear] update check failed:", e?.message || e));
+// Update flow: check GitHub Releases and PROMPT the user before downloading and
+// again before installing (no silent updates). Only meaningful in a packaged
+// build (the app-update.yml feed is baked in by electron-builder). Errors (e.g.
+// an unsigned macOS build, which Squirrel.Mac can't update) are logged.
+let updaterWired = false;
+let manualCheck = false; // true when the user pressed Refresh, so we report "up to date"
+
+function wireUpdater() {
+  if (updaterWired) return;
+  updaterWired = true;
+  autoUpdater.autoDownload = false;
+
+  autoUpdater.on("error", (e) => {
+    console.error("[spear] update error:", e?.message || e);
+    if (manualCheck) {
+      manualCheck = false;
+      dialog.showMessageBox({ type: "warning", buttons: ["OK"], title: "Update check failed", message: String(e?.message || e) });
+    }
+  });
+
+  autoUpdater.on("update-available", async (info) => {
+    manualCheck = false;
+    const { response } = await dialog.showMessageBox({
+      type: "info",
+      buttons: ["Download", "Later"],
+      defaultId: 0,
+      cancelId: 1,
+      title: "Update available",
+      message: `spear ${info?.version} is available.`,
+      detail: "Download it now? You can keep working — you'll be asked before it installs.",
+    });
+    if (response === 0) autoUpdater.downloadUpdate().catch((e) => console.error("[spear] download failed:", e?.message || e));
+  });
+
+  autoUpdater.on("update-not-available", () => {
+    if (manualCheck) {
+      manualCheck = false;
+      dialog.showMessageBox({ type: "info", buttons: ["OK"], title: "Up to date", message: "You're on the latest version of spear." });
+    }
+  });
+
+  autoUpdater.on("update-downloaded", async (info) => {
+    const { response } = await dialog.showMessageBox({
+      type: "info",
+      buttons: ["Restart now", "Later"],
+      defaultId: 0,
+      cancelId: 1,
+      title: "Update ready",
+      message: `spear ${info?.version} is ready to install.`,
+      detail: "Restart now to update?",
+    });
+    if (response === 0) autoUpdater.quitAndInstall();
+  });
 }
+
+function runUpdateCheck({ manual = false } = {}) {
+  if (!app.isPackaged) {
+    if (manual) {
+      dialog.showMessageBox({ type: "info", buttons: ["OK"], title: "Updates", message: "Update checks only run in the installed desktop app." });
+    }
+    return;
+  }
+  manualCheck = manual;
+  autoUpdater.checkForUpdates().catch((e) => {
+    console.error("[spear] update check failed:", e?.message || e);
+    if (manual) {
+      manualCheck = false;
+      dialog.showMessageBox({ type: "warning", buttons: ["OK"], title: "Update check failed", message: String(e?.message || e) });
+    }
+  });
+}
+
+// Renderer (the dashboard's Refresh button) asks to check for updates.
+ipcMain.handle("spear:check-for-updates", async () => {
+  runUpdateCheck({ manual: true });
+  return { ok: true };
+});
 
 app.whenReady().then(async () => {
   try {
@@ -88,7 +155,8 @@ app.whenReady().then(async () => {
   }
   await waitForServer();
   createWindow();
-  if (app.isPackaged) checkForUpdates();
+  wireUpdater();
+  runUpdateCheck({ manual: false }); // silent on launch; prompts only if an update exists
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

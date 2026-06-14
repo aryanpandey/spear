@@ -188,7 +188,7 @@ export interface Scorecard {
 export interface GoalsData {
   goals: Goal[];
   scorecard: Scorecard | null;
-  scorecards: { id: number; title: string; is_current: boolean }[];
+  scorecards: { id: number; title: string; week_of: string | null; is_current: boolean }[];
 }
 
 async function jsonOrThrow(r: Response): Promise<any> {

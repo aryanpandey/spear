@@ -134,8 +134,9 @@ npm run electron:dev # run the desktop shell locally without packaging
 
 ### Releases & auto-update
 
-The app self-updates from GitHub Releases via `electron-updater`: on launch a packaged build
-checks the latest release, downloads a newer version in the background, and installs it on quit.
+The app updates from GitHub Releases via `electron-updater`. A packaged build checks for a newer
+release on launch and whenever you click **⟳ refresh** in the header, and **prompts** before doing
+anything: first to download the update, then to restart and install it — never silently.
 
 Releases are built and published by CI — **`.github/workflows/release.yml`** builds the macOS
 `.dmg` and the Windows `.exe`/portable on their native runners and publishes them (plus the

@@ -239,7 +239,7 @@ function ScorecardCard({
             >
               {all.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {s.title}
+                  {s.week_of?.trim() || "(no week set)"}
                 </option>
               ))}
             </select>

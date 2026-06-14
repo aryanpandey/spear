@@ -28,6 +28,7 @@ export interface ScorecardDto {
 export interface ScorecardSummary {
   id: number;
   title: string;
+  week_of: string | null;
   is_current: boolean;
 }
 
@@ -73,6 +74,8 @@ export function goalsPageDto(store: Store): GoalsPageDto {
   return {
     goals: store.listGoals(),
     scorecard: current ? scorecardDto(store, current.id) : null,
-    scorecards: store.listScorecards().map((c) => ({ id: c.id, title: c.title, is_current: c.is_current })),
+    scorecards: store
+      .listScorecards()
+      .map((c) => ({ id: c.id, title: c.title, week_of: c.week_of, is_current: c.is_current })),
   };
 }

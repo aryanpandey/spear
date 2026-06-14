@@ -15,6 +15,7 @@ export function App() {
   const [today, setToday] = useState<TodayData | null>(null);
   const [updated, setUpdated] = useState<number | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -27,6 +28,18 @@ export function App() {
       setErr(e instanceof Error ? e.message : String(e));
     }
   }, []);
+
+  // Refresh: re-fetch the latest data and, in the desktop app, ask the main
+  // process to check for an app update (which prompts the user to install).
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await load();
+      if (window.spear?.isDesktop) await window.spear.checkForUpdates();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [load]);
 
   // Live updates via SSE; the server pushes on every mutation/re-plan.
   // A slow interval is a safety net if the stream drops.
@@ -60,6 +73,14 @@ export function App() {
           </button>
         </div>
         <div className="spacer" />
+        <button
+          className="tab"
+          onClick={refresh}
+          disabled={refreshing}
+          title="Refresh data & check for an app update"
+        >
+          {refreshing ? "⟳ …" : "⟳ refresh"}
+        </button>
         <DesktopButton />
         <span className="status">
           {err ? (

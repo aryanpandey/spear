@@ -12,7 +12,14 @@ function DueBadge({ band }: { band: DueBand }) {
   return null;
 }
 
+// Generic phase stages ("Planning", "Implementation", "Testing", "Stage
+// Testing") are indistinguishable across tasks, so lead the title with the task
+// name. Custom-named stages are already descriptive and stand on their own.
+const PHASE_KINDS = ["planning", "design", "implementation", "testing", "stage_testing"];
+
 function Item({ item }: { item: TodayItem }) {
+  const isPhase = PHASE_KINDS.includes(item.stage.kind);
+  const title = isPhase ? `${item.task.title} · ${item.stage.name}` : item.stage.name;
   return (
     <div className={`card item ${item.scheduled_state}`}>
       <div className="cardrow">
@@ -22,10 +29,11 @@ function Item({ item }: { item: TodayItem }) {
         {item.is_delegation_candidate && <span className="badge delegate">⇄ delegate</span>}
       </div>
       <div className="title" style={{ marginTop: 4 }}>
-        {item.stage.name} <span className="kind">· {item.stage.kind}</span>
+        {title} <span className="kind">· {item.stage.kind}</span>
       </div>
       <div className="muted" style={{ fontSize: 11 }}>
-        #{item.task.id} {item.task.title}
+        #{item.task.id}
+        {isPhase ? "" : ` ${item.task.title}`}
       </div>
       {item.rationale && <div className="why">{item.rationale}</div>}
     </div>
