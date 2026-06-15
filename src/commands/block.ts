@@ -2,7 +2,7 @@ import type { Command } from "commander";
 import { openStore } from "../context.js";
 import { loadConfig } from "../config/index.js";
 import { blockTask, unblockTask } from "../service.js";
-import { triggerReplan } from "../replan/trigger.js";
+import { pingRefresh } from "../replan/trigger.js";
 import { c, taskOneLiner } from "../util/render.js";
 
 export function registerBlock(program: Command): void {
@@ -17,7 +17,7 @@ export function registerBlock(program: Command): void {
         const task = blockTask(store, Number(taskIdRaw), Number(opts.by));
         console.log(taskOneLiner(task));
         console.log(c.dim(`  now blocked-by #${opts.by}`));
-        await triggerReplan(store, loadConfig());
+        await pingRefresh(loadConfig().port); // dependency change — no re-plan
       } catch (err) {
         console.error(c.red(err instanceof Error ? err.message : String(err)));
         process.exitCode = 1;
@@ -37,7 +37,7 @@ export function registerBlock(program: Command): void {
         const task = unblockTask(store, Number(taskIdRaw), Number(opts.by));
         console.log(taskOneLiner(task));
         console.log(c.dim(`  removed blocked-by #${opts.by}`));
-        await triggerReplan(store, loadConfig());
+        await pingRefresh(loadConfig().port); // dependency change — no re-plan
       } finally {
         store.db.close();
       }

@@ -2,7 +2,7 @@ import type { Command } from "commander";
 import { openStore } from "../context.js";
 import { loadConfig } from "../config/index.js";
 import { advanceTask, completeStage, completeTask } from "../service.js";
-import { triggerReplan } from "../replan/trigger.js";
+import { pingRefresh } from "../replan/trigger.js";
 import { c, taskOneLiner } from "../util/render.js";
 
 interface DoneOpts {
@@ -42,7 +42,7 @@ export function registerDone(program: Command): void {
           console.log("  " + taskOneLiner(task));
           mutated = true;
         }
-        if (mutated) await triggerReplan(store, loadConfig());
+        if (mutated) await pingRefresh(loadConfig().port); // progress only — no re-plan
       } catch (err) {
         console.error(c.red(err instanceof Error ? err.message : String(err)));
         process.exitCode = 1;

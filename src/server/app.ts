@@ -131,13 +131,13 @@ export function buildServer(store: Store, cfg: SpearConfig): SpearServer {
 
   app.post<{ Params: { id: string } }>("/api/tasks/:id/advance", async (req) => {
     const { task, completed } = advanceTask(store, Number(req.params.id));
-    replanner.requestReplan("adhoc");
+    hub.broadcast({ type: "update", source: "refresh" }); // progress only — no re-plan
     return { task, completed };
   });
 
   app.post<{ Params: { id: string } }>("/api/tasks/:id/done", async (req) => {
     const task = completeTask(store, Number(req.params.id));
-    replanner.requestReplan("adhoc");
+    hub.broadcast({ type: "update", source: "refresh" }); // marking done — no re-plan
     return { task };
   });
 
@@ -148,7 +148,7 @@ export function buildServer(store: Store, cfg: SpearConfig): SpearServer {
       return { error: "invalid status" };
     }
     const task = setTaskStatus(store, Number(req.params.id), status);
-    replanner.requestReplan("adhoc");
+    hub.broadcast({ type: "update", source: "refresh" }); // status change — no re-plan
     return { task };
   });
 
@@ -161,7 +161,7 @@ export function buildServer(store: Store, cfg: SpearConfig): SpearServer {
     try {
       // Empty/null body clears the deadline.
       const task = setTaskDue(store, id, req.body?.due ?? "clear");
-      replanner.requestReplan("adhoc");
+      hub.broadcast({ type: "update", source: "refresh" }); // reschedule — no re-plan
       return { task };
     } catch (err) {
       reply.code(400);
@@ -176,7 +176,7 @@ export function buildServer(store: Store, cfg: SpearConfig): SpearServer {
       return { error: "not found" };
     }
     removeTask(store, id);
-    replanner.requestReplan("adhoc");
+    hub.broadcast({ type: "update", source: "refresh" }); // deletion — no re-plan
     return { ok: true };
   });
 
