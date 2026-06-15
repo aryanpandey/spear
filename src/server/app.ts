@@ -5,7 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Store } from "../db/store.js";
 import type { SpearConfig } from "../config/index.js";
-import { addTask, advanceTask, completeTask, removeTask, setTaskDue, setTaskStatus } from "../service.js";
+import { addTask, advanceTask, completeTask, removeTask, setTaskDue, setTaskPriority, setTaskStatus } from "../service.js";
 import { breakdownForAdd } from "../breakdown/index.js";
 import { PRIORITIES, TASK_STATUSES, TASK_TYPES, type Priority, type TaskStatus, type TaskType } from "../types.js";
 import { GOAL_STATUSES, type GoalStatus } from "../types.js";
@@ -149,6 +149,22 @@ export function buildServer(store: Store, cfg: SpearConfig): SpearServer {
     }
     const task = setTaskStatus(store, Number(req.params.id), status);
     hub.broadcast({ type: "update", source: "refresh" }); // status change — no re-plan
+    return { task };
+  });
+
+  app.post<{ Params: { id: string }; Body: { priority?: string } }>("/api/tasks/:id/priority", async (req, reply) => {
+    const id = Number(req.params.id);
+    if (!store.getTask(id)) {
+      reply.code(404);
+      return { error: "not found" };
+    }
+    const priority = req.body?.priority as Priority;
+    if (!PRIORITIES.includes(priority)) {
+      reply.code(400);
+      return { error: "invalid priority" };
+    }
+    const task = setTaskPriority(store, id, priority);
+    hub.broadcast({ type: "update", source: "refresh" }); // priority change — no re-plan
     return { task };
   });
 

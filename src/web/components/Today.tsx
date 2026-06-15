@@ -4,11 +4,15 @@ import {
   completeTask,
   deleteTask,
   setTaskDue,
+  setTaskPriority,
+  type Priority,
   type ScheduledState,
   type TodayData,
   type TodayItem,
   type TodayLane,
 } from "../api";
+
+const PRIORITIES: Priority[] = ["critical", "high", "medium", "low"];
 
 const SCHED_LABEL: Record<ScheduledState, string> = {
   start_now: "▶ now",
@@ -71,6 +75,45 @@ function DueEditor({ item, onChange }: { item: TodayItem; onChange: () => void }
   );
 }
 
+// Clickable priority badge → pick one of the four levels. Updates the task
+// immediately; it does not re-plan (the new ordering shows on the next add / plan).
+function PriorityEditor({ item, onChange }: { item: TodayItem; onChange: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const apply = async (p: Priority) => {
+    try {
+      if (p !== item.task.priority) await setTaskPriority(item.task.id, p);
+    } finally {
+      setEditing(false);
+      onChange();
+    }
+  };
+  if (editing) {
+    return (
+      <span className="pri-edit">
+        {PRIORITIES.map((p) => (
+          <button
+            key={p}
+            className={`badge pri-${p} pri-opt${p === item.task.priority ? " current" : ""}`}
+            title={p === item.task.priority ? "current (click to close)" : `set ${p}`}
+            onClick={() => void apply(p)}
+          >
+            {p}
+          </button>
+        ))}
+      </span>
+    );
+  }
+  return (
+    <button
+      className={`badge pri-${item.task.priority} pri-btn`}
+      title="Click to change priority"
+      onClick={() => setEditing(true)}
+    >
+      {item.task.priority}
+    </button>
+  );
+}
+
 // Generic phase stages ("Planning", "Implementation", "Testing", "Stage
 // Testing") are indistinguishable across tasks, so lead the title with the task
 // name. Custom-named stages are already descriptive and stand on their own.
@@ -93,7 +136,7 @@ function Item({ item, onChange }: { item: TodayItem; onChange: () => void }) {
       <div className="cardrow">
         <span className={`sched ${item.scheduled_state}`}>{SCHED_LABEL[item.scheduled_state]}</span>
         {inProgress && <span className="badge in-progress">⟳ in progress</span>}
-        <span className={`badge pri-${item.task.priority}`}>{item.task.priority}</span>
+        <PriorityEditor item={item} onChange={onChange} />
         <DueEditor item={item} onChange={onChange} />
         {item.is_delegation_candidate && <span className="badge delegate">⇄ delegate</span>}
       </div>

@@ -430,6 +430,19 @@ main { padding: 18px 20px 40px; flex: 1; }
 }
 .status .replanning { color: var(--cyan); }
 
+/* Clickable priority badge → inline picker of the four levels. */
+.pri-btn,
+.pri-opt {
+  font: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+.pri-btn:hover { box-shadow: var(--glow); }
+.pri-edit { display: inline-flex; gap: 3px; align-items: center; }
+.pri-opt { opacity: 0.5; }
+.pri-opt:hover,
+.pri-opt.current { opacity: 1; }
+
 /* ---- Goals tab ---- */
 .goals { max-width: 820px; }
 

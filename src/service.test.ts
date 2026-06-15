@@ -12,6 +12,7 @@ import {
   recomputeTaskStatus,
   removeTask,
   setTaskDue,
+  setTaskPriority,
   setTaskStatus,
   unblockTask,
 } from "./service.js";
@@ -172,5 +173,20 @@ describe("service.setTaskDue", () => {
     const { task } = addTask(store, { title: "Ship it" });
     expect(() => setTaskDue(store, 9999, "today")).toThrow();
     expect(() => setTaskDue(store, task.id, "whenever")).toThrow();
+  });
+});
+
+describe("service.setTaskPriority", () => {
+  let store: Store;
+  beforeEach(() => (store = freshStore()));
+
+  it("changes a task's priority", () => {
+    const { task } = addTask(store, { title: "T", priority: "medium", stages: [{ name: "s", kind: "generic" }] });
+    expect(setTaskPriority(store, task.id, "critical").priority).toBe("critical");
+    expect(store.getTask(task.id)!.priority).toBe("critical");
+  });
+
+  it("throws on an unknown task", () => {
+    expect(() => setTaskPriority(store, 9999, "high")).toThrow();
   });
 });

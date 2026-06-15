@@ -140,6 +140,13 @@ export function setTaskDue(store: Store, taskId: number, dueInput: string): Task
   return store.getTask(taskId)!;
 }
 
+/** Change a task's priority. */
+export function setTaskPriority(store: Store, taskId: number, priority: Priority): Task {
+  if (!store.getTask(taskId)) throw new Error(`task ${taskId} not found`);
+  store.updateTask(taskId, { priority });
+  return store.getTask(taskId)!;
+}
+
 /** Set a task's status explicitly. */
 export function setTaskStatus(store: Store, taskId: number, status: TaskStatus): Task {
   if (!store.getTask(taskId)) throw new Error(`task ${taskId} not found`);
