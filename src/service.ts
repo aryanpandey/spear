@@ -1,6 +1,6 @@
 import type { Store } from "./db/store.js";
 import type { Priority, Stage, Task, TaskStatus, TaskType } from "./types.js";
-import { genericStage, standardFeatureStages, type StageSpec } from "./breakdown/standard.js";
+import { genericStage, type StageSpec } from "./breakdown/standard.js";
 import { parseDueInput } from "./util/time.js";
 
 export interface AddTaskInput {
@@ -21,13 +21,9 @@ export interface TaskWithStages {
   stages: Stage[];
 }
 
-/**
- * Derive stages when none are provided: features get the fixed 4-stage flow,
- * everything else gets a single generic stage.
- */
+/** Use the breakdown's stages when provided; otherwise a single generic stage. */
 function deriveStages(input: AddTaskInput): StageSpec[] {
   if (input.stages && input.stages.length) return input.stages;
-  if (input.type === "feature") return standardFeatureStages();
   return genericStage(input.title);
 }
 

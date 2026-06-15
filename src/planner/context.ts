@@ -1,38 +1,17 @@
 import type { Store } from "../db/store.js";
-import type { Effort, ExecutorKind, Priority, Stage, StageKind, TaskStatus, TaskType } from "../types.js";
-import { buildPlannerGraph, type PlannerExecutor, type PlannerInput, type PlannerStage } from "./graph.js";
+import type { Effort, ExecutorKind, Priority, StageKind, TaskStatus, TaskType } from "../types.js";
+import { openDependencies } from "../service.js";
 
-function toPlannerStage(s: Stage): PlannerStage {
-  return {
-    id: s.id,
-    seq: s.seq,
-    status: s.status,
-    effort: s.effort,
-    kind: s.kind,
-    delegatable_to: s.delegatable_to,
-  };
+export interface PlannerExecutorRef {
+  id: number;
+  kind: ExecutorKind;
 }
 
-/** Read the whole board into the plain PlannerInput the graph consumes. */
-export function buildPlannerInput(store: Store): PlannerInput {
-  const tasks = store.listTasks();
-  const stages = new Map<number, PlannerStage[]>();
-  for (const t of tasks) stages.set(t.id, store.getStages(t.id).map(toPlannerStage));
-  const deps = store
-    .listDependencies()
-    .map((d) => ({ task_id: d.task_id, blocked_by_task_id: d.blocked_by_task_id }));
-  return {
-    tasks: tasks.map((t) => ({ id: t.id, priority: t.priority, status: t.status, title: t.title, due: t.due })),
-    stages,
-    deps,
-  };
-}
-
-export function plannerExecutors(store: Store): PlannerExecutor[] {
+export function plannerExecutors(store: Store): PlannerExecutorRef[] {
   return store.listExecutors(true).map((e) => ({ id: e.id, kind: e.kind }));
 }
 
-// ---- Rich, human-readable context for the LLM planner ----
+// ---- Raw, human-readable board snapshot for the LLM planner ----
 
 export interface PlanContextStage {
   stageId: number;
@@ -49,8 +28,8 @@ export interface PlanContextFlow {
   type: TaskType;
   priority: Priority;
   status: TaskStatus;
-  ready: boolean;
-  criticalPath: number;
+  due: string | null;
+  /** Dependency task ids that are still open (the LLM must not start a flow with any). */
   openBlockers: number[];
   /** Remaining (not done/skipped) stages, in order. */
   stages: PlanContextStage[];
@@ -62,29 +41,24 @@ export interface PlanContext {
   flows: PlanContextFlow[];
 }
 
-/** Build the LLM-facing context: titles + remaining stages + readiness/critical-path. */
+/** Build the LLM-facing board: open flows with their remaining stages + blockers. */
 export function buildPlanContext(store: Store, date: string): PlanContext {
-  const graph = buildPlannerGraph(buildPlannerInput(store));
   const executors = store
     .listExecutors(true)
     .map((e) => ({ id: e.id, name: e.name, kind: e.kind, capacity: e.capacity, handles: e.handles }));
 
   const flows: PlanContextFlow[] = [];
-  for (const taskId of [...graph.ready, ...graph.waiting]) {
-    const node = graph.nodes.get(taskId)!;
-    const task = store.getTask(taskId)!;
-    const remaining = store
-      .getStages(taskId)
-      .filter((s) => s.status !== "done" && s.status !== "skipped");
+  for (const task of store.listOpenTasks()) {
+    const remaining = store.getStages(task.id).filter((s) => s.status !== "done" && s.status !== "skipped");
+    if (remaining.length === 0) continue;
     flows.push({
-      taskId,
+      taskId: task.id,
       title: task.title,
       type: task.type,
       priority: task.priority,
       status: task.status,
-      ready: node.ready,
-      criticalPath: node.criticalPath,
-      openBlockers: node.openBlockers,
+      due: task.due,
+      openBlockers: openDependencies(store, task.id),
       stages: remaining.map((s) => ({
         stageId: s.id,
         name: s.name,

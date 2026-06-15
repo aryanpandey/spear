@@ -2,40 +2,29 @@ import type { Command } from "commander";
 import { openStore } from "../context.js";
 import { loadConfig } from "../config/index.js";
 import { buildAndSavePlan } from "../planner/build.js";
-import { hasApiKey } from "../llm/client.js";
 import { renderPlan } from "../planner/render.js";
 import { PLAN_TRIGGERS, type PlanTrigger } from "../types.js";
 import { assertEnum } from "../util/validate.js";
 import { c } from "../util/render.js";
 
-interface PlanOpts {
-  llm: boolean;
-  trigger: string;
-}
-
 export function registerPlan(program: Command): void {
   program
     .command("plan")
-    .description("Regenerate today's execution flow (LLM if available) and make it current")
-    .option("--no-llm", "use the deterministic planner only")
+    .description("Regenerate today's execution flow via the Claude CLI and make it current")
     .option("--trigger <trigger>", "morning|adhoc|manual", "manual")
-    .action(async (opts: PlanOpts) => {
+    .action(async (opts: { trigger: string }) => {
       const trigger = assertEnum("trigger", opts.trigger, PLAN_TRIGGERS) as PlanTrigger;
       const cfg = loadConfig();
       const store = openStore();
       try {
-        const { plan, usedLlm } = await buildAndSavePlan(store, {
-          trigger,
-          useLlm: opts.llm !== false,
-          model: cfg.models.planner,
-          effort: cfg.effort.planner,
-          maxLanes: cfg.maxLanes,
-        });
-        void plan;
-        console.log(renderPlan(store));
-        if (!usedLlm && opts.llm !== false && !hasApiKey()) {
-          console.log(c.dim("\nhint: set a Claude key for LLM-optimized planning — spear config set anthropicApiKey sk-ant-..."));
+        const { plan, error } = await buildAndSavePlan(store, cfg, trigger);
+        if (error && !plan) {
+          console.error(c.red(`planning failed: ${error}`));
+          process.exitCode = 1;
+          return;
         }
+        if (error) console.log(c.dim(`(planner error: ${error}; showing the previous plan)`));
+        console.log(renderPlan(store));
       } finally {
         store.db.close();
       }

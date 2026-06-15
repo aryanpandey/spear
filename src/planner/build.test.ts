@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { openDb } from "../db/index.js";
 import { Store } from "../db/store.js";
-import { addTask, blockTask } from "../service.js";
+import { addTask } from "../service.js";
+import { DEFAULT_CONFIG } from "../config/index.js";
 import { buildAndSavePlan } from "./build.js";
 
 function freshStore(): Store {
@@ -10,42 +11,38 @@ function freshStore(): Store {
   return s;
 }
 
-describe("buildAndSavePlan (deterministic, no API key)", () => {
-  it("persists a current plan with lanes for each open flow", async () => {
+describe("buildAndSavePlan", () => {
+  it("persists the plan the LLM (CLI) returns", async () => {
     const store = freshStore();
-    const a = addTask(store, { title: "Build login", type: "feature", priority: "high" }).task;
-    const b = addTask(store, { title: "Renew cert", type: "chore", priority: "low" }).task;
-    blockTask(store, b.id, a.id);
-
-    const { plan, usedLlm } = await buildAndSavePlan(store, {
-      trigger: "manual",
-      useLlm: false,
-      model: "claude-opus-4-8",
-      effort: "high",
-      maxLanes: 8,
+    const { task, stages } = addTask(store, { title: "Build login", stages: [{ name: "Impl", kind: "implementation" }] });
+    const exec = store.listExecutors(true)[0];
+    const run = async () => ({
+      narrative: "Go.",
+      lanes: [
+        {
+          lane: 0,
+          executor_id: exec.id,
+          items: [{ task_id: task.id, stage_id: stages[0].id, order: 0, is_delegation_candidate: false, scheduled_state: "start_now", rationale: "r" }],
+        },
+      ],
     });
-
-    expect(usedLlm).toBe(false);
-    expect(plan.is_current).toBe(true);
-    expect(store.getCurrentPlan()!.id).toBe(plan.id);
-
-    const items = store.getPlanItems(plan.id);
-    const lanes = new Set(items.map((i) => i.lane));
-    expect(lanes.size).toBe(2); // one lane per open flow
-
-    const aFirst = items.find((i) => i.task_id === a.id && i.order_in_lane === 0)!;
-    const bFirst = items.find((i) => i.task_id === b.id && i.order_in_lane === 0)!;
-    expect(aFirst.scheduled_state).toBe("start_now");
-    expect(bFirst.scheduled_state).toBe("waiting");
+    const { plan, error } = await buildAndSavePlan(store, DEFAULT_CONFIG, "manual", run);
+    expect(error).toBeUndefined();
+    expect(plan).not.toBeNull();
+    const items = store.getPlanItems(plan!.id);
+    expect(items).toHaveLength(1);
+    expect(items[0].scheduled_state).toBe("start_now");
   });
 
-  it("regenerating replaces the current plan", async () => {
+  it("does not overwrite the current plan when the LLM fails", async () => {
     const store = freshStore();
-    addTask(store, { title: "T1", type: "chore" });
-    const first = await buildAndSavePlan(store, { trigger: "manual", useLlm: false, model: "m", effort: "high", maxLanes: 8 });
-    const second = await buildAndSavePlan(store, { trigger: "manual", useLlm: false, model: "m", effort: "high", maxLanes: 8 });
-    expect(second.plan.id).not.toBe(first.plan.id);
-    expect(store.getCurrentPlan()!.id).toBe(second.plan.id);
-    expect(store.getPlan(first.plan.id)!.is_current).toBe(false);
+    addTask(store, { title: "X", stages: [{ name: "s", kind: "generic" }] });
+    const failing = async () => {
+      throw new Error("cli down");
+    };
+    const { plan, error } = await buildAndSavePlan(store, DEFAULT_CONFIG, "manual", failing);
+    expect(error).toMatch(/cli down/);
+    expect(plan).toBeNull(); // no prior plan existed
+    expect(store.getCurrentPlan()).toBeUndefined();
   });
 });

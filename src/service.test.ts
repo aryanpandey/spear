@@ -26,11 +26,11 @@ describe("service.addTask", () => {
   let store: Store;
   beforeEach(() => (store = freshStore()));
 
-  it("gives a feature the fixed 4-stage flow", () => {
+  it("uses provided stages, else a single generic stage (no built-in feature flow)", () => {
     const { task, stages } = addTask(store, { title: "Build X", type: "feature", priority: "high" });
     expect(task.type).toBe("feature");
-    expect(stages.map((s) => s.name)).toEqual(["Planning", "Implementation", "Testing", "Stage Testing"]);
-    expect(stages[1].delegatable_to).toContain("ai_agent");
+    expect(stages).toHaveLength(1);
+    expect(stages[0].kind).toBe("generic");
   });
 
   it("gives a non-feature a single generic stage", () => {
@@ -66,7 +66,16 @@ describe("service flow advance + status rollup", () => {
   beforeEach(() => (store = freshStore()));
 
   it("advances stage by stage, then marks the task done", () => {
-    const { task } = addTask(store, { title: "Feature", type: "feature" });
+    const { task } = addTask(store, {
+      title: "Feature",
+      type: "feature",
+      stages: [
+        { name: "Planning", kind: "planning" },
+        { name: "Implementation", kind: "implementation" },
+        { name: "Testing", kind: "testing" },
+        { name: "Stage Testing", kind: "stage_testing" },
+      ],
+    });
     expect(nextOpenStage(store, task.id)?.name).toBe("Planning");
 
     advanceTask(store, task.id); // Planning done
@@ -93,7 +102,13 @@ describe("service flow advance + status rollup", () => {
   });
 
   it("completeStage settles the owning task", () => {
-    const { task, stages } = addTask(store, { title: "Feature", type: "feature" });
+    const { task, stages } = addTask(store, {
+      title: "Feature",
+      stages: [
+        { name: "Planning", kind: "planning" },
+        { name: "Implementation", kind: "implementation" },
+      ],
+    });
     completeStage(store, stages[0].id);
     expect(store.getStages(task.id)[0].status).toBe("done");
     expect(store.getTask(task.id)!.status).toBe("in_progress");

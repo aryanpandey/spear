@@ -1,13 +1,13 @@
 import type { Store } from "../db/store.js";
 import type { SpearConfig } from "../config/index.js";
-import { saveStickyPlan } from "../planner/build.js";
+import { buildAndSavePlan } from "../planner/build.js";
 
 /**
  * After a CLI mutation, keep the plan + dashboard in sync:
- *  - if a server is running, hand off (it re-plans, refines with the LLM, and
- *    pushes the update to any open browser over SSE);
- *  - otherwise persist a fresh deterministic plan inline so `today`/`serve`
- *    show the latest.
+ *  - if a server is running, hand off (it re-plans via the Claude CLI and pushes
+ *    the update to any open browser over SSE);
+ *  - otherwise re-plan inline (also via the Claude CLI) so `today`/`serve` show
+ *    the latest.
  */
 export async function triggerReplan(store: Store, cfg: SpearConfig): Promise<"server" | "inline"> {
   try {
@@ -23,7 +23,8 @@ export async function triggerReplan(store: Store, cfg: SpearConfig): Promise<"se
     /* no server listening — fall through to inline */
   }
 
-  saveStickyPlan(store, cfg, "adhoc");
+  const { error } = await buildAndSavePlan(store, cfg, "adhoc");
+  if (error) process.stderr.write(`spear: re-plan failed (${error})\n`);
   return "inline";
 }
 

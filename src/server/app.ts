@@ -100,16 +100,21 @@ export function buildServer(store: Store, cfg: SpearConfig): SpearServer {
       reply.code(400);
       return { error: "invalid type" };
     }
-    const broken = await breakdownForAdd({
-      title: body.title,
-      description: body.description,
-      forcedType,
-      useLlm: body.useLlm !== false,
-      model: cfg.models.breakdown,
-      effort: cfg.effort.breakdown,
-      due: body.due ?? null,
-      explicitPriority,
-    });
+    let broken;
+    try {
+      broken = await breakdownForAdd({
+        title: body.title,
+        description: body.description,
+        forcedType,
+        model: cfg.models.breakdown,
+        effort: cfg.effort.breakdown,
+        due: body.due ?? null,
+        explicitPriority,
+      });
+    } catch (err) {
+      reply.code(502);
+      return { error: `breakdown failed: ${err instanceof Error ? err.message : String(err)}` };
+    }
     const { task } = addTask(store, {
       title: broken.title,
       description: body.description,

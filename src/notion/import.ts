@@ -111,7 +111,6 @@ export async function importSeed(
         title,
         description,
         forcedType: t.type as TaskType | undefined,
-        useLlm: true,
         model: opts.model,
         effort: opts.effort,
       });

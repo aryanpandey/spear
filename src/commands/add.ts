@@ -3,7 +3,6 @@ import { openStore } from "../context.js";
 import { loadConfig } from "../config/index.js";
 import { addTask } from "../service.js";
 import { breakdownForAdd } from "../breakdown/index.js";
-import { hasApiKey } from "../llm/client.js";
 import { triggerReplan } from "../replan/trigger.js";
 import { PRIORITIES, TASK_TYPES, type Priority, type TaskType } from "../types.js";
 import { assertEnum, parseIds } from "../util/validate.js";
@@ -15,39 +14,43 @@ interface AddOpts {
   blockedBy?: string;
   description?: string;
   due?: string;
-  llm: boolean; // commander sets `llm:false` for --no-llm
 }
 
 export function registerAdd(program: Command): void {
   program
     .command("add")
     .argument("<title>", "what you want to do, in plain English")
-    .description("Add a task; priority + breakdown are inferred (override with flags)")
-    .option("-p, --priority <priority>", "critical|high|medium|low (otherwise auto-inferred)")
+    .description("Add a task; the Claude CLI breaks it down and infers priority (override with flags)")
+    .option("-p, --priority <priority>", "critical|high|medium|low (otherwise the LLM infers it)")
     .option("-t, --type <type>", "feature|bug|chore|research|other (forces type, skips classification)")
     .option("-b, --blocked-by <ids>", "comma/space separated task ids this is blocked by")
     .option("-d, --description <text>", "longer description for the LLM / your notes")
-    .option("--due <date>", "due date (YYYY-MM-DD) — feeds priority + time-awareness")
-    .option("--no-llm", "instant capture: no LLM (feature → 4 stages, else single stage)")
+    .option("--due <date>", "due date (YYYY-MM-DD)")
     .action(async (title: string, opts: AddOpts) => {
       const cfg = loadConfig();
       const explicitPriority = opts.priority
         ? (assertEnum("priority", opts.priority, PRIORITIES) as Priority)
         : undefined;
-      const forcedType = opts.type ? assertEnum("type", opts.type, TASK_TYPES) : undefined;
+      const forcedType = opts.type ? (assertEnum("type", opts.type, TASK_TYPES) as TaskType) : undefined;
       const blockedBy = parseIds(opts.blockedBy);
       const due = opts.due ?? null;
 
-      const broken = await breakdownForAdd({
-        title,
-        description: opts.description,
-        forcedType,
-        useLlm: opts.llm !== false,
-        model: cfg.models.breakdown,
-        effort: cfg.effort.breakdown,
-        due,
-        explicitPriority,
-      });
+      let broken;
+      try {
+        broken = await breakdownForAdd({
+          title,
+          description: opts.description,
+          forcedType,
+          model: cfg.models.breakdown,
+          effort: cfg.effort.breakdown,
+          due,
+          explicitPriority,
+        });
+      } catch (err) {
+        console.error(c.red(`breakdown failed (claude CLI): ${err instanceof Error ? err.message : String(err)}`));
+        process.exitCode = 1;
+        return;
+      }
 
       const store = openStore();
       try {
@@ -61,14 +64,11 @@ export function registerAdd(program: Command): void {
           stages: broken.stages,
         });
         console.log(taskOneLiner(task, stages[0]?.name));
-        console.log(c.dim(`  ${broken.source === "llm" ? "LLM" : "deterministic"} breakdown → ${stages.length} stage(s): ${stages.map((s) => s.name).join(" → ")}`));
+        console.log(c.dim(`  breakdown → ${stages.length} stage(s): ${stages.map((s) => s.name).join(" → ")}`));
         if (!explicitPriority) {
           console.log(c.dim(`  priority: `) + priorityColor(broken.priority, broken.priority) + c.dim(` (${broken.priorityReason})`));
         }
         if (blockedBy.length) console.log(c.dim(`  blocked-by: ${blockedBy.map((b) => `#${b}`).join(", ")}`));
-        if (broken.source === "deterministic" && opts.llm !== false && !forcedType && !hasApiKey()) {
-          console.log(c.dim("  hint: set a Claude key for LLM classification + breakdown — spear config set anthropicApiKey sk-ant-..."));
-        }
         await triggerReplan(store, cfg);
       } finally {
         store.db.close();

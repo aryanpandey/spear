@@ -1,18 +1,16 @@
 import type { Priority, TaskType } from "../types.js";
-import { genericStage, standardFeatureStages, type StageSpec } from "./standard.js";
-import { inferPriority } from "../planner/priority.js";
+import type { StageSpec } from "./standard.js";
+import type { ClaudeRunner } from "../llm/cli.js";
 
 export interface BreakdownRequest {
   title: string;
   description?: string;
-  /** When set, classification is skipped and this type is used. */
+  /** When set, the LLM uses this type instead of classifying. */
   forcedType?: TaskType;
-  useLlm: boolean;
   model: string;
   effort: "low" | "medium" | "high" | "max";
-  /** Due date (for priority inference). */
   due?: string | null;
-  /** If the user passed --priority, it wins over any inference. */
+  /** If the user passed --priority, it wins over the LLM's suggestion. */
   explicitPriority?: Priority;
 }
 
@@ -20,52 +18,24 @@ export interface BreakdownResult {
   title: string;
   type: TaskType;
   stages: StageSpec[];
-  source: "llm" | "deterministic";
-  /** Priority the LLM suggested (only set on the LLM path). */
+  /** Priority the LLM suggested. */
   suggestedPriority?: Priority;
 }
 
 export interface ResolvedBreakdown extends BreakdownResult {
-  /** Final priority to use for the task. */
   priority: Priority;
-  /** Why this priority was chosen (for transparency). */
   priorityReason: string;
 }
 
-/** Deterministic fallback: features → 4 stages, everything else → one generic stage. */
-export function deterministicBreakdown(title: string, type: TaskType): BreakdownResult {
-  const stages = type === "feature" ? standardFeatureStages() : genericStage(title);
-  return { title, type, stages, source: "deterministic" };
-}
-
-/** Resolve a task into {type, stages, priority}. Priority: explicit > LLM > heuristic. */
-export async function breakdownForAdd(req: BreakdownRequest): Promise<ResolvedBreakdown> {
-  let base: BreakdownResult;
-
-  if (req.forcedType) {
-    base = deterministicBreakdown(req.title, req.forcedType);
-  } else {
-    base = deterministicBreakdown(req.title, "other");
-    if (req.useLlm) {
-      try {
-        const { llmBreakdown } = await import("../llm/breakdown.js");
-        const llm = await llmBreakdown(req);
-        if (llm) base = llm;
-      } catch (err) {
-        process.stderr.write(
-          `spear: LLM breakdown failed (${err instanceof Error ? err.message : String(err)}); using deterministic breakdown.\n`,
-        );
-      }
-    }
-  }
-
-  // Priority: explicit wins; else the LLM's suggestion; else the heuristic.
-  if (req.explicitPriority) {
-    return { ...base, priority: req.explicitPriority, priorityReason: "set explicitly" };
-  }
-  if (base.suggestedPriority) {
-    return { ...base, priority: base.suggestedPriority, priorityReason: "LLM-inferred" };
-  }
-  const inferred = inferPriority({ title: base.title, due: req.due ?? null });
-  return { ...base, priority: inferred.priority, priorityReason: inferred.reason };
+/**
+ * Resolve a task into {type, stages, priority} via the Claude CLI. There is no
+ * deterministic fallback — if the CLI is unavailable or returns bad JSON, this
+ * throws. Priority: explicit (user) > LLM suggestion > medium.
+ */
+export async function breakdownForAdd(req: BreakdownRequest, run?: ClaudeRunner): Promise<ResolvedBreakdown> {
+  const { llmBreakdown } = await import("../llm/breakdown.js");
+  const base = await llmBreakdown(req, run);
+  const priority = req.explicitPriority ?? base.suggestedPriority ?? "medium";
+  const priorityReason = req.explicitPriority ? "set explicitly" : base.suggestedPriority ? "LLM-inferred" : "default";
+  return { ...base, priority, priorityReason };
 }

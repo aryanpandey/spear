@@ -2,8 +2,7 @@ import { describe, it, expect } from "vitest";
 import { openDb } from "../db/index.js";
 import { Store } from "../db/store.js";
 import { addTask, blockTask } from "../service.js";
-import { buildPlannerInput, plannerExecutors } from "./context.js";
-import { deterministicPlan } from "./graph.js";
+import { buildPlanContext, openStageIds } from "./context.js";
 
 function freshStore(): Store {
   const s = new Store(openDb(":memory:"));
@@ -11,27 +10,25 @@ function freshStore(): Store {
   return s;
 }
 
-describe("buildPlannerInput + deterministicPlan integration", () => {
-  it("turns a live board into a deterministic plan with the Me executor", () => {
+describe("buildPlanContext", () => {
+  it("emits open flows with their remaining stages and open blockers", () => {
     const store = freshStore();
-    const a = addTask(store, { title: "Build login", type: "feature", priority: "high" }).task;
-    const b = addTask(store, { title: "Polish copy", type: "chore", priority: "low" }).task;
-    blockTask(store, b.id, a.id); // b waits on a
+    const a = addTask(store, { title: "A", stages: [{ name: "s", kind: "generic" }] });
+    const b = addTask(store, { title: "B", stages: [{ name: "s", kind: "generic" }] });
+    blockTask(store, b.task.id, a.task.id);
 
-    const planInput = buildPlannerInput(store);
-    const execs = plannerExecutors(store);
-    expect(execs[0].kind).toBe("self");
+    const ctx = buildPlanContext(store, "2026-06-15");
+    expect(ctx.flows.map((f) => f.taskId).sort((x, y) => x - y)).toEqual([a.task.id, b.task.id]);
 
-    const { items, narrative } = deterministicPlan(planInput, execs);
-    // a's first stage (Planning) starts now; b is blocked → not start_now
-    const aFirst = items.find((i) => i.task_id === a.id && i.order_in_lane === 0)!;
-    const bFirst = items.find((i) => i.task_id === b.id && i.order_in_lane === 0)!;
-    expect(aFirst.scheduled_state).toBe("start_now");
-    expect(bFirst.scheduled_state).toBe("waiting");
-    // every item assigned to the seeded Me executor
-    expect(items.every((i) => i.executor_id === execs[0].id)).toBe(true);
-    // feature stages include delegatable ones
-    expect(items.some((i) => i.is_delegation_candidate)).toBe(true);
-    expect(narrative).toMatch(/open flow/);
+    const bf = ctx.flows.find((f) => f.taskId === b.task.id)!;
+    expect(bf.openBlockers).toEqual([a.task.id]);
+    expect(bf.stages).toHaveLength(1);
+    expect(ctx.executors[0].kind).toBe("self");
+  });
+
+  it("openStageIds lists every open stage id", () => {
+    const store = freshStore();
+    const a = addTask(store, { title: "A", stages: [{ name: "s", kind: "generic" }] });
+    expect(openStageIds(store).has(a.stages[0].id)).toBe(true);
   });
 });

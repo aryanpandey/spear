@@ -8,8 +8,6 @@ export interface SpearConfig {
   port: number;
   /** When the launchd morning job fires (local time). */
   morning: { hour: number; minute: number };
-  /** Anthropic API key for the LLM calls. Falls back to $ANTHROPIC_API_KEY when unset. */
-  anthropicApiKey?: string;
   /** Claude model ids for the two LLM calls. */
   models: { breakdown: string; planner: string };
   /** Effort levels for the two LLM calls. */

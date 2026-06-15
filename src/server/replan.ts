@@ -1,14 +1,14 @@
 import type { Store } from "../db/store.js";
 import type { SpearConfig } from "../config/index.js";
 import type { PlanTrigger } from "../types.js";
-import { saveStickyPlan } from "../planner/build.js";
+import { buildAndSavePlan } from "../planner/build.js";
 import type { SseHub } from "./sse.js";
 
 /**
- * Owns plan regeneration for the running server. Ad-hoc changes do an instant,
- * deterministic, STICKY re-plan (existing lanes stay put, the new task slots in)
- * and broadcast — no LLM re-grouping mid-day, so the day doesn't reshuffle. The
- * heavy LLM grouping happens at the morning / `spear plan` full re-cluster.
+ * Owns plan regeneration for the running server. Every change kicks off an
+ * LLM (Claude CLI) re-plan in the background and broadcasts when it finishes,
+ * so the triggering mutation returns immediately and the dashboard updates over
+ * SSE a few seconds later. On planner failure the current plan is left intact.
  */
 export class Replanner {
   constructor(
@@ -18,8 +18,17 @@ export class Replanner {
   ) {}
 
   requestReplan(trigger: PlanTrigger = "adhoc"): void {
-    saveStickyPlan(this.store, this.cfg, trigger);
-    this.hub.broadcast({ type: "update", source: "sticky" });
+    void this.run(trigger);
+  }
+
+  private async run(trigger: PlanTrigger): Promise<void> {
+    const { error } = await buildAndSavePlan(this.store, this.cfg, trigger);
+    if (error) {
+      process.stderr.write(`spear: re-plan failed (${error})\n`);
+      this.hub.broadcast({ type: "update", source: "error", error });
+    } else {
+      this.hub.broadcast({ type: "update", source: "llm" });
+    }
   }
 
   dispose(): void {
