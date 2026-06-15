@@ -18,6 +18,7 @@ export function App() {
   const [updated, setUpdated] = useState<number | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [replanning, setReplanning] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -48,17 +49,39 @@ export function App() {
   useEffect(() => {
     load();
     const es = new EventSource("/events");
-    es.onmessage = () => load();
+    let safetyTimer: number | undefined;
+    es.onmessage = (e) => {
+      let msg: { type?: string; phase?: string } | null = null;
+      try {
+        msg = JSON.parse(e.data);
+      } catch {
+        /* non-JSON; treat as a plain refresh */
+      }
+      if (msg?.type === "replan" && msg.phase === "start") {
+        setReplanning(true);
+        // Safety: never let the bar stick if the "end" event is missed.
+        window.clearTimeout(safetyTimer);
+        safetyTimer = window.setTimeout(() => setReplanning(false), 150000);
+        return;
+      }
+      if (msg?.type === "replan" && msg.phase === "end") {
+        window.clearTimeout(safetyTimer);
+        setReplanning(false);
+      }
+      load();
+    };
     const safety = window.setInterval(load, 20000);
     return () => {
       es.close();
       window.clearInterval(safety);
+      window.clearTimeout(safetyTimer);
     };
   }, [load]);
 
   return (
     <div className="app">
       <Rain />
+      {replanning && <div className="replan-bar" title="Re-planning with Claude…" />}
       <header className="bar">
         <span className="brand">
           <Logo />
@@ -91,6 +114,8 @@ export function App() {
         <span className="status">
           {err ? (
             <span style={{ color: "var(--crit)" }}>● {err}</span>
+          ) : replanning ? (
+            <span className="replanning">⟳ re-planning…</span>
           ) : (
             <>
               <span className="live">● live</span>

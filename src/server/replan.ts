@@ -22,13 +22,12 @@ export class Replanner {
   }
 
   private async run(trigger: PlanTrigger): Promise<void> {
+    // Tell open dashboards a re-plan started so they can show progress; the LLM
+    // call takes ~30-60s. The matching "end" fires when the plan is persisted.
+    this.hub.broadcast({ type: "replan", phase: "start" });
     const { error } = await buildAndSavePlan(this.store, this.cfg, trigger);
-    if (error) {
-      process.stderr.write(`spear: re-plan failed (${error})\n`);
-      this.hub.broadcast({ type: "update", source: "error", error });
-    } else {
-      this.hub.broadcast({ type: "update", source: "llm" });
-    }
+    if (error) process.stderr.write(`spear: re-plan failed (${error})\n`);
+    this.hub.broadcast({ type: "replan", phase: "end", ...(error ? { error } : {}) });
   }
 
   dispose(): void {

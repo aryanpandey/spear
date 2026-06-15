@@ -409,6 +409,27 @@ main { padding: 18px 20px 40px; flex: 1; }
   padding: 0;
 }
 
+/* Indeterminate re-planning progress bar (LLM time is unpredictable). */
+.replan-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 200;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent 0%, var(--green) 50%, transparent 100%);
+  background-size: 35% 100%;
+  background-repeat: no-repeat;
+  box-shadow: 0 0 8px rgba(0, 255, 65, 0.6);
+  animation: replan-sweep 1s linear infinite;
+}
+@keyframes replan-sweep {
+  from { background-position: -35% 0; }
+  to { background-position: 135% 0; }
+}
+.status .replanning { color: var(--cyan); }
+
 /* ---- Goals tab ---- */
 .goals { max-width: 820px; }
 
