@@ -325,6 +325,85 @@ main { padding: 18px 20px 40px; flex: 1; }
   padding: 0 4px;
 }
 
+/* ── Week (calendar) tab ── */
+.week { display: flex; flex-direction: column; gap: 10px; }
+.week-head {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  padding: 6px 10px;
+  border-radius: 3px;
+  font-size: 13px;
+}
+.week-overdue {
+  border: 1px solid var(--crit);
+  border-radius: 3px;
+  padding: 6px 8px;
+  background: rgba(255, 83, 80, 0.06);
+}
+.week-strip-head {
+  color: var(--crit);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+.week-strip-body, .unsched-body { display: flex; flex-wrap: wrap; gap: 6px; }
+.unsched-body { margin-top: 6px; }
+.week-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  align-items: start;
+}
+.week-day {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  border-radius: 3px;
+  padding: 6px;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.week-day.today { border-color: var(--cyan); box-shadow: 0 0 8px rgba(43, 240, 255, 0.25); }
+.week-day.drop-over, .unscheduled.drop-over {
+  border-color: var(--green);
+  box-shadow: var(--glow);
+  background: rgba(0, 255, 65, 0.08);
+}
+.week-col-head {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 3px;
+}
+.week-empty { font-size: 11px; opacity: 0.4; }
+.cal-chip {
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  padding: 2px 5px;
+  font-size: 11px;
+  cursor: grab;
+  background: var(--panel-solid);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cal-chip:active { cursor: grabbing; }
+.cal-chip.done { opacity: 0.45; text-decoration: line-through; }
+.unscheduled { border: 1px solid var(--border); border-radius: 3px; padding: 6px 8px; background: var(--panel); }
+.unsched-toggle {
+  font: inherit;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+}
+
 /* ---- Goals tab ---- */
 .goals { max-width: 820px; }
 

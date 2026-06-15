@@ -2,13 +2,14 @@ import { useCallback, useEffect, useState } from "react";
 import { Rain } from "./components/Rain";
 import { Board } from "./components/Board";
 import { Today } from "./components/Today";
+import { Calendar } from "./components/Calendar";
 import { Goals } from "./components/Goals";
 import { AddTask } from "./components/AddTask";
 import { DesktopButton } from "./components/DesktopButton";
 import { Logo } from "./components/Logo";
 import { fetchBoard, fetchToday, type BoardData, type TodayData } from "./api";
 
-type Tab = "today" | "board" | "goals";
+type Tab = "today" | "board" | "week" | "goals";
 
 export function App() {
   const [tab, setTab] = useState<Tab>("today");
@@ -70,6 +71,9 @@ export function App() {
           <button className={`tab ${tab === "board" ? "active" : ""}`} onClick={() => setTab("board")}>
             Board
           </button>
+          <button className={`tab ${tab === "week" ? "active" : ""}`} onClick={() => setTab("week")}>
+            Week
+          </button>
           <button className={`tab ${tab === "goals" ? "active" : ""}`} onClick={() => setTab("goals")}>
             Goals
           </button>
@@ -103,6 +107,7 @@ export function App() {
           </>
         )}
         {tab === "board" && board && <Board data={board} onChange={load} />}
+        {tab === "week" && board && <Calendar data={board} onChange={load} />}
         {tab === "goals" && <Goals />}
         {tab !== "goals" && !board && !today && !err && <div className="empty">loading…</div>}
       </main>
