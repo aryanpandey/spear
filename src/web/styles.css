@@ -250,6 +250,29 @@ main { padding: 18px 20px 40px; flex: 1; }
 .item.background { border-left-color: var(--cyan); }
 .item.waiting { border-left-color: #3a3f3a; opacity: 0.75; }
 
+/* in-progress: floated to the top of its lane with a slow matrix-green pulse */
+.item.in-progress {
+  border-left-color: var(--green);
+  opacity: 1;
+  animation: ip-card 1.8s ease-in-out infinite;
+}
+@keyframes ip-card {
+  0%, 100% { box-shadow: -2px 0 10px rgba(0, 255, 65, 0.35); }
+  50% { box-shadow: -2px 0 3px rgba(0, 255, 65, 0.1); }
+}
+.badge.in-progress {
+  color: var(--green);
+  border-color: var(--green);
+  animation: ip-flash 1.8s ease-in-out infinite;
+}
+@keyframes ip-flash {
+  0%, 100% { opacity: 1; text-shadow: 0 0 7px var(--green); }
+  50% { opacity: 0.35; text-shadow: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .item.in-progress, .badge.in-progress { animation: none; }
+}
+
 .sched { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
 .sched.start_now { color: var(--green); }
 .sched.background { color: var(--cyan); }

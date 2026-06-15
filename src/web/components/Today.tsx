@@ -37,10 +37,12 @@ function Item({ item, onChange }: { item: TodayItem; onChange: () => void }) {
       onChange();
     }
   };
+  const inProgress = item.task.status === "in_progress";
   return (
-    <div className={`card item ${item.scheduled_state}`}>
+    <div className={`card item ${item.scheduled_state}${inProgress ? " in-progress" : ""}`}>
       <div className="cardrow">
         <span className={`sched ${item.scheduled_state}`}>{SCHED_LABEL[item.scheduled_state]}</span>
+        {inProgress && <span className="badge in-progress">⟳ in progress</span>}
         <span className={`badge pri-${item.task.priority}`}>{item.task.priority}</span>
         <DueBadge band={item.dueBand} />
         {item.is_delegation_candidate && <span className="badge delegate">⇄ delegate</span>}
@@ -77,6 +79,10 @@ function Item({ item, onChange }: { item: TodayItem; onChange: () => void }) {
 }
 
 function Lane({ lane, number, onChange }: { lane: TodayLane; number: number; onChange: () => void }) {
+  // Float in-progress work to the top of the lane (stable otherwise).
+  const items = [...lane.items].sort(
+    (a, b) => Number(b.task.status === "in_progress") - Number(a.task.status === "in_progress"),
+  );
   return (
     <div className="lane">
       <div className="lane-head">
@@ -84,7 +90,7 @@ function Lane({ lane, number, onChange }: { lane: TodayLane; number: number; onC
         <span className="owner">{lane.executor?.name ?? "unassigned"}</span>
         {lane.executor && <span className="ek">{lane.executor.kind}</span>}
       </div>
-      {lane.items.map((it) => (
+      {items.map((it) => (
         <Item key={`${it.task.id}-${it.stage.id}`} item={it} onChange={onChange} />
       ))}
     </div>
