@@ -257,10 +257,22 @@ export function deterministicPlan(
       ? incrementalGroups(ordered, opts.existingLanes ?? new Map(), maxLanes, titleById)
       : clusterByTitle(ordered.map((id) => ({ id, title: titleById.get(id) ?? "" })), maxLanes);
 
-  // Order within each lane: overdue/due-today float to the top, then phase
-  // (design → implementation → testing), then priority.
+  // A CRITICAL, ready task means "drop everything": it floats to the head of its
+  // lane (ahead of overdue/phase ordering) so its next step becomes start_now,
+  // superseding any in-progress / overdue lane-mate. A blocked critical does NOT
+  // float — it can't be started now, so it shouldn't steal the head.
+  const isCriticalReady = (id: number): boolean => {
+    const node = graph.nodes.get(id);
+    return !!node && node.priority === "critical" && node.ready;
+  };
+
+  // Order within each lane: critical+ready first, then overdue/due-today, then
+  // phase (design → implementation → testing), then priority.
   for (const g of groups) {
     g.sort((a, b) => {
+      const ca = isCriticalReady(a) ? 0 : 1;
+      const cb = isCriticalReady(b) ? 0 : 1;
+      if (ca !== cb) return ca - cb;
       const da = dueFloat(dueById.get(a), now);
       const db = dueFloat(dueById.get(b), now);
       if (da !== db) return da - db;

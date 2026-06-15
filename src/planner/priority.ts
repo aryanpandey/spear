@@ -19,13 +19,18 @@ export interface PriorityInferResult {
   reason: string;
 }
 
-const bump = (rank: number): number => Math.max(0, rank - 1);
+// Raise priority one tier, but never above HIGH and never below the current
+// tier. CRITICAL is reserved for emergency wording / explicit user intent — a
+// due date or a blocking relationship must not manufacture it, because CRITICAL
+// now means "drop everything and supersede in-progress work".
+const bump = (rank: number): number =>
+  Math.min(rank, Math.max(PRIORITY_RANK.high, rank - 1));
 
 /**
  * Heuristic priority for zero-decision capture. Starts at medium, then:
- * urgent wording sets a tier, a due date applies a floor (overdue→critical,
- * today→high, soon→bump), and blocking others bumps one level. Floors only
- * ever raise priority. Pure (pass `now` for determinism).
+ * urgent wording sets a tier, a due date applies a floor (overdue/today→high,
+ * soon→bump), and blocking others bumps one level. Floors only ever raise
+ * priority, and only emergency wording reaches CRITICAL. Pure (pass `now`).
  */
 export function inferPriority(input: PriorityInferInput): PriorityInferResult {
   const reasons: string[] = [];
@@ -42,7 +47,7 @@ export function inferPriority(input: PriorityInferInput): PriorityInferResult {
 
   switch (dueBand(input.due, input.now ?? new Date())) {
     case "overdue":
-      rank = Math.min(rank, PRIORITY_RANK.critical);
+      rank = Math.min(rank, PRIORITY_RANK.high);
       reasons.push("overdue");
       break;
     case "today":

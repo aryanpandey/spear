@@ -11,6 +11,7 @@ import {
   openDependencies,
   recomputeTaskStatus,
   removeTask,
+  setTaskDue,
   setTaskStatus,
   unblockTask,
 } from "./service.js";
@@ -125,5 +126,28 @@ describe("service flow advance + status rollup", () => {
     // b no longer has an open blocker → unblocked
     expect(openDependencies(store, b.id)).toEqual([]);
     expect(store.getTask(b.id)!.status).toBe("todo");
+  });
+});
+
+describe("service.setTaskDue", () => {
+  let store: Store;
+  beforeEach(() => (store = freshStore()));
+
+  it("sets a normalized deadline on a task", () => {
+    const { task } = addTask(store, { title: "Ship it" });
+    const updated = setTaskDue(store, task.id, "2026-06-20");
+    expect(updated.due).toBe("2026-06-20");
+    expect(store.getTask(task.id)!.due).toBe("2026-06-20");
+  });
+
+  it("clears the deadline with 'clear'", () => {
+    const { task } = addTask(store, { title: "Ship it", due: "2026-06-20" });
+    expect(setTaskDue(store, task.id, "clear").due).toBeNull();
+  });
+
+  it("throws on an unknown task or an invalid date", () => {
+    const { task } = addTask(store, { title: "Ship it" });
+    expect(() => setTaskDue(store, 9999, "today")).toThrow();
+    expect(() => setTaskDue(store, task.id, "whenever")).toThrow();
   });
 });

@@ -36,6 +36,35 @@ export function dueBand(due: string | null | undefined, now: Date = new Date()):
   return "later";
 }
 
+function offsetDays(now: Date, n: number): string {
+  return todayLocal(new Date(now.getFullYear(), now.getMonth(), now.getDate() + n));
+}
+
+/**
+ * Parse a user-supplied deadline into a normalized YYYY-MM-DD, or null to clear.
+ * Accepts: `YYYY-MM-DD`, `+Nd` (N days from now), `today`, `tomorrow`, and
+ * `clear`/`none`/empty (clear). Throws on anything else or an impossible date.
+ */
+export function parseDueInput(input: string, now: Date = new Date()): string | null {
+  const s = input.trim().toLowerCase();
+  if (s === "" || s === "clear" || s === "none") return null;
+  if (s === "today") return todayLocal(now);
+  if (s === "tomorrow") return offsetDays(now, 1);
+
+  const rel = /^\+(\d+)d$/.exec(s);
+  if (rel) return offsetDays(now, Number(rel[1]));
+
+  const abs = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (abs) {
+    const d = new Date(Number(abs[1]), Number(abs[2]) - 1, Number(abs[3]));
+    // Reject overflow (e.g. 2026-13-40) by requiring a clean round-trip.
+    if (todayLocal(d) !== s) throw new Error(`invalid date: ${input}`);
+    return s;
+  }
+
+  throw new Error(`unrecognized deadline "${input}" (use YYYY-MM-DD, +Nd, today, tomorrow, or clear)`);
+}
+
 /** Minutes from `now` until the local workday end (hour:minute); 0 if already past. */
 export function minutesUntil(hour: number, minute: number, now: Date = new Date()): number {
   const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute, 0, 0);

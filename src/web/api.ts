@@ -97,6 +97,16 @@ export async function setTaskStatus(id: number, status: TaskStatus): Promise<voi
   if (!r.ok) throw new Error(`status ${r.status}`);
 }
 
+/** Set (`YYYY-MM-DD`) or clear (`null`) a task's deadline; server re-plans. */
+export async function setTaskDue(id: number, due: string | null): Promise<void> {
+  const r = await fetch(`/api/tasks/${id}/due`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ due }),
+  });
+  if (!r.ok) throw new Error(`due ${r.status}`);
+}
+
 export async function completeTask(id: number): Promise<void> {
   const r = await fetch(`/api/tasks/${id}/done`, { method: "POST" });
   if (!r.ok) throw new Error(`done ${r.status}`);

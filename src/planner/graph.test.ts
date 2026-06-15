@@ -187,6 +187,40 @@ describe("deterministicPlan", () => {
     expect(searchItems.map((i) => i.task_id)).toEqual([2, 3, 1]); // overdue, today, then far
   });
 
+  it("floats a critical, ready task to the lane head, superseding an overdue mate", () => {
+    const { items } = deterministicPlan(
+      input([
+        // overdue medium — normally floats to the lane head and takes start_now
+        { id: 1, priority: "medium", title: "Billing reconcile", due: dayOffset(-2), stages: [stage("small")] },
+        // critical + ready — must supersede it
+        { id: 2, priority: "critical", title: "Billing hotfix", due: null, stages: [stage("small")] },
+      ]),
+      execs,
+      1, // single lane
+    );
+    const byTask = (id: number) => items.find((i) => i.task_id === id)!;
+    expect(byTask(2).scheduled_state).toBe("start_now"); // critical takes NOW
+    expect(byTask(1).scheduled_state).toBe("waiting"); // overdue mate is superseded
+    expect(byTask(2).order_in_lane).toBeLessThan(byTask(1).order_in_lane); // and sits at the head
+  });
+
+  it("does not give start_now to a blocked critical — the ready mate keeps it", () => {
+    const { items } = deterministicPlan(
+      input(
+        [
+          { id: 1, priority: "medium", title: "Payments ready step", due: null, stages: [stage("small")] },
+          { id: 2, priority: "critical", title: "Payments blocked step", due: null, stages: [stage("small")] },
+        ],
+        [[2, 1]], // task 2 is blocked by task 1
+      ),
+      execs,
+      1,
+    );
+    const byTask = (id: number) => items.find((i) => i.task_id === id)!;
+    expect(byTask(1).scheduled_state).toBe("start_now"); // ready mate keeps NOW
+    expect(byTask(2).scheduled_state).toBe("waiting"); // blocked critical can't start now
+  });
+
   it("flags delegatable stages and marks blocked flows waiting", () => {
     const planInput = input(
       [

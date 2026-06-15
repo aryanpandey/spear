@@ -14,6 +14,8 @@ GROUP flows into AT MOST ${maxLanes} lanes — do NOT create one lane per task; 
 
 ORDER WITHIN EACH LANE strictly by phase: design / planning first, then implementation, then testing / stage-testing. Design takes priority over implementation; implementation takes priority over testing. Infer a task's phase from its stage kinds and its title (e.g. "… Design" = design, "… Implementation/Development" = implementation, "… Testing/Eval/Validate/Review" = testing).
 
+CRITICAL OVERRIDE: a flow whose priority is "critical" and that is ready (no open blockers) is a drop-everything task. Place it at the HEAD of its lane — ahead of phase order and ahead of any overdue or in-progress flow in that lane — and set its next step's scheduled_state to "start_now", superseding whatever was previously current there. A critical flow that is still blocked stays "waiting".
+
 Then get the founder through the day with the SHORTEST personal critical path:
 - Order lanes so the highest-priority / longest-critical-path theme comes first.
 - Assign each lane to an executor. Offload to a non-"self" executor whenever a stage's delegatable_to allows it, so the founder (the executor whose kind is "self") is not the bottleneck. If "self" is the only executor, still set is_delegation_candidate=true on any stage that COULD be handed to an ai_agent / teammate / ci — surface what is delegatable.

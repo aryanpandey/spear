@@ -1,6 +1,7 @@
 import type { Store } from "./db/store.js";
 import type { Priority, Stage, Task, TaskStatus, TaskType } from "./types.js";
 import { genericStage, standardFeatureStages, type StageSpec } from "./breakdown/standard.js";
+import { parseDueInput } from "./util/time.js";
 
 export interface AddTaskInput {
   title: string;
@@ -129,6 +130,18 @@ export function completeStage(store: Store, stageId: number): Stage {
   recomputeTaskStatus(store, stage.task_id);
   resettleDependents(store, stage.task_id);
   return store.getStage(stageId)!;
+}
+
+/**
+ * Set (or clear) a task's deadline. `dueInput` accepts YYYY-MM-DD, `+Nd`,
+ * `today`, `tomorrow`, or `clear`/`none` (see parseDueInput). Throws on an
+ * unknown task or an unparseable date.
+ */
+export function setTaskDue(store: Store, taskId: number, dueInput: string): Task {
+  if (!store.getTask(taskId)) throw new Error(`task ${taskId} not found`);
+  const due = parseDueInput(dueInput);
+  store.updateTask(taskId, { due });
+  return store.getTask(taskId)!;
 }
 
 /** Set a task's status explicitly. */

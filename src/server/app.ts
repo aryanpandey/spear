@@ -5,7 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Store } from "../db/store.js";
 import type { SpearConfig } from "../config/index.js";
-import { addTask, advanceTask, completeTask, removeTask, setTaskStatus } from "../service.js";
+import { addTask, advanceTask, completeTask, removeTask, setTaskDue, setTaskStatus } from "../service.js";
 import { breakdownForAdd } from "../breakdown/index.js";
 import { PRIORITIES, TASK_STATUSES, TASK_TYPES, type Priority, type TaskStatus, type TaskType } from "../types.js";
 import { GOAL_STATUSES, type GoalStatus } from "../types.js";
@@ -145,6 +145,23 @@ export function buildServer(store: Store, cfg: SpearConfig): SpearServer {
     const task = setTaskStatus(store, Number(req.params.id), status);
     replanner.requestReplan("adhoc");
     return { task };
+  });
+
+  app.post<{ Params: { id: string }; Body: { due?: string | null } }>("/api/tasks/:id/due", async (req, reply) => {
+    const id = Number(req.params.id);
+    if (!store.getTask(id)) {
+      reply.code(404);
+      return { error: "not found" };
+    }
+    try {
+      // Empty/null body clears the deadline.
+      const task = setTaskDue(store, id, req.body?.due ?? "clear");
+      replanner.requestReplan("adhoc");
+      return { task };
+    } catch (err) {
+      reply.code(400);
+      return { error: err instanceof Error ? err.message : "invalid deadline" };
+    }
   });
 
   app.delete<{ Params: { id: string } }>("/api/tasks/:id", async (req, reply) => {

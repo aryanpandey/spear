@@ -1,8 +1,9 @@
+import { useState } from "react";
 import {
   setTaskStatus,
   completeTask,
   deleteTask,
-  type DueBand,
+  setTaskDue,
   type ScheduledState,
   type TodayData,
   type TodayItem,
@@ -15,10 +16,59 @@ const SCHED_LABEL: Record<ScheduledState, string> = {
   waiting: "… waiting",
 };
 
-function DueBadge({ band }: { band: DueBand }) {
-  if (band === "overdue") return <span className="badge due-overdue">⌛ overdue</span>;
-  if (band === "today") return <span className="badge due-today">⏰ today</span>;
-  return null;
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function fmtDue(due: string | null): string {
+  if (!due) return "";
+  const [, m, d] = due.split("-").map(Number);
+  return `${MONTHS[(m || 1) - 1]} ${d}`;
+}
+
+// Clickable deadline chip → native date picker. Works for any card, and the
+// overdue/today states double as the reschedule affordance.
+function DueEditor({ item, onChange }: { item: TodayItem; onChange: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const apply = async (due: string | null) => {
+    try {
+      await setTaskDue(item.task.id, due);
+    } finally {
+      setEditing(false);
+      onChange();
+    }
+  };
+  if (editing) {
+    return (
+      <span className="due-edit">
+        <input
+          type="date"
+          className="due-input"
+          defaultValue={item.due ?? ""}
+          autoFocus
+          onChange={(e) => e.target.value && void apply(e.target.value)}
+          onBlur={() => setEditing(false)}
+        />
+        {item.due && (
+          <button className="due-clear" title="Clear deadline" onMouseDown={() => void apply(null)}>
+            ✕
+          </button>
+        )}
+      </span>
+    );
+  }
+  const label =
+    item.dueBand === "overdue"
+      ? `⌛ ${fmtDue(item.due)}`
+      : item.dueBand === "today"
+        ? "⏰ today"
+        : item.due
+          ? `▤ ${fmtDue(item.due)}`
+          : "+ due";
+  const cls =
+    item.dueBand === "overdue" ? "due-chip overdue" : item.dueBand === "today" ? "due-chip today" : "due-chip";
+  return (
+    <button className={cls} title="Set / change deadline" onClick={() => setEditing(true)}>
+      {label}
+    </button>
+  );
 }
 
 // Generic phase stages ("Planning", "Implementation", "Testing", "Stage
@@ -44,7 +94,7 @@ function Item({ item, onChange }: { item: TodayItem; onChange: () => void }) {
         <span className={`sched ${item.scheduled_state}`}>{SCHED_LABEL[item.scheduled_state]}</span>
         {inProgress && <span className="badge in-progress">⟳ in progress</span>}
         <span className={`badge pri-${item.task.priority}`}>{item.task.priority}</span>
-        <DueBadge band={item.dueBand} />
+        <DueEditor item={item} onChange={onChange} />
         {item.is_delegation_candidate && <span className="badge delegate">⇄ delegate</span>}
       </div>
       <div className="title" style={{ marginTop: 4 }}>

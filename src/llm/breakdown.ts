@@ -13,7 +13,7 @@ Rules:
 - Otherwise: break the work into the smallest sensible set of sequential stages (often just one). Use kind "generic" unless a stage is clearly planning/implementation/testing/stage_testing. Don't add ceremony a small task doesn't need.
 - For every stage, set "delegatable_to": the executor kinds that could own it. Always include "self". Add "ai_agent" for work a coding/AI agent could do (implementation, research, drafting, writing tests), "ci" for automated test/build/deploy runs, "teammate" for human review or QA.
 - Estimate "effort" per stage and for the task overall: small, medium, or large.
-- Suggest a "priority" (critical/high/medium/low) from the task's urgency and impact.
+- Suggest a "priority" (critical/high/medium/low) from the task's urgency and impact. Reserve "critical" for genuine drop-everything emergencies (production outage, security incident, a hard external deadline already missed): a critical task supersedes all in-progress work and must be addressed immediately. Use "high" for important or urgent-but-not-emergency work, and default to "medium". A due date or deadline alone is NOT enough to make something critical.
 - Return a concise, cleaned "title".`;
 
 function userPrompt(req: BreakdownRequest): string {
