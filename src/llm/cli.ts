@@ -63,6 +63,9 @@ export function claudeAvailable(override?: string): boolean {
 
 export interface ClaudeOpts {
   model?: string;
+  /** Constrains depth/speed. Without it, `claude -p` inherits the user's global
+   * effortLevel (often "xhigh"), which makes a full re-plan painfully slow. */
+  effort?: "low" | "medium" | "high" | "max";
   cliPath?: string;
   timeoutMs?: number;
 }
@@ -82,6 +85,7 @@ export const claudeJson: ClaudeRunner = async (prompt, opts = {}) => {
   }
   const args = ["-p", prompt, "--output-format", "json"];
   if (opts.model) args.push("--model", opts.model);
+  if (opts.effort) args.push("--effort", opts.effort);
 
   const { stdout } = await execFileP(bin, args, {
     maxBuffer: 32 * 1024 * 1024,

@@ -58,12 +58,12 @@ export interface LlmPlanResult {
  */
 export async function llmPlan(
   context: PlanContext,
-  opts: { model: string; maxLanes?: number },
+  opts: { model: string; effort?: "low" | "medium" | "high" | "max"; maxLanes?: number },
   validStageIds: Set<number> = new Set(),
   run: ClaudeRunner = claudeJson,
 ): Promise<LlmPlanResult | null> {
   const prompt = `${systemPrompt(opts.maxLanes ?? 8)}\n\n${SHAPE}\n\nPlan this board (use its exact task_id / stage_id values):\n${JSON.stringify(context)}`;
-  const parsed = await claudeStructured(prompt, (x) => PlanSchema.parse(x), { model: opts.model }, run);
+  const parsed = await claudeStructured(prompt, (x) => PlanSchema.parse(x), { model: opts.model, effort: opts.effort }, run);
   const items = lanesToItems(parsed, validStageIds);
   if (items.length === 0) return null;
   return { items, narrative: parsed.narrative };

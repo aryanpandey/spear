@@ -28,7 +28,7 @@ export async function buildAndSavePlan(
     const context = buildPlanContext(store, todayLocal());
     const res = await llmPlan(
       context,
-      { model: cfg.models.planner, maxLanes: cfg.maxLanes },
+      { model: cfg.models.planner, effort: cfg.effort.planner, maxLanes: cfg.maxLanes },
       openStageIds(store),
       run,
     );

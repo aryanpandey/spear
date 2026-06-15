@@ -24,7 +24,7 @@ export const DEFAULT_CONFIG: SpearConfig = {
   port: 4317,
   morning: { hour: 8, minute: 0 },
   models: { breakdown: "claude-opus-4-8", planner: "claude-opus-4-8" },
-  effort: { breakdown: "medium", planner: "high" },
+  effort: { breakdown: "low", planner: "medium" },
   defaultPriority: "medium",
   maxLanes: 6,
   replanDebounceMs: 4000,

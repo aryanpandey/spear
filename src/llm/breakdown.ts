@@ -48,6 +48,6 @@ function normalize(parsed: BreakdownOutput, req: BreakdownRequest): BreakdownRes
 
 /** Break a task down via the Claude CLI. Throws if the CLI is unavailable or returns bad JSON. */
 export async function llmBreakdown(req: BreakdownRequest, run: ClaudeRunner = claudeJson): Promise<BreakdownResult> {
-  const parsed = await claudeStructured(buildPrompt(req), (x) => BreakdownSchema.parse(x), { model: req.model }, run);
+  const parsed = await claudeStructured(buildPrompt(req), (x) => BreakdownSchema.parse(x), { model: req.model, effort: req.effort }, run);
   return normalize(parsed, req);
 }
