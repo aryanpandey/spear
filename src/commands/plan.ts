@@ -2,6 +2,7 @@ import type { Command } from "commander";
 import { openStore } from "../context.js";
 import { loadConfig } from "../config/index.js";
 import { buildAndSavePlan } from "../planner/build.js";
+import { hasApiKey } from "../llm/client.js";
 import { renderPlan } from "../planner/render.js";
 import { PLAN_TRIGGERS, type PlanTrigger } from "../types.js";
 import { assertEnum } from "../util/validate.js";
@@ -32,8 +33,8 @@ export function registerPlan(program: Command): void {
         });
         void plan;
         console.log(renderPlan(store));
-        if (!usedLlm && opts.llm !== false && !process.env.ANTHROPIC_API_KEY) {
-          console.log(c.dim("\nhint: set ANTHROPIC_API_KEY for LLM-optimized planning"));
+        if (!usedLlm && opts.llm !== false && !hasApiKey()) {
+          console.log(c.dim("\nhint: set a Claude key for LLM-optimized planning — spear config set anthropicApiKey sk-ant-..."));
         }
       } finally {
         store.db.close();

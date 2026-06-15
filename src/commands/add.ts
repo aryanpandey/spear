@@ -3,6 +3,7 @@ import { openStore } from "../context.js";
 import { loadConfig } from "../config/index.js";
 import { addTask } from "../service.js";
 import { breakdownForAdd } from "../breakdown/index.js";
+import { hasApiKey } from "../llm/client.js";
 import { triggerReplan } from "../replan/trigger.js";
 import { PRIORITIES, TASK_TYPES, type Priority, type TaskType } from "../types.js";
 import { assertEnum, parseIds } from "../util/validate.js";
@@ -65,8 +66,8 @@ export function registerAdd(program: Command): void {
           console.log(c.dim(`  priority: `) + priorityColor(broken.priority, broken.priority) + c.dim(` (${broken.priorityReason})`));
         }
         if (blockedBy.length) console.log(c.dim(`  blocked-by: ${blockedBy.map((b) => `#${b}`).join(", ")}`));
-        if (broken.source === "deterministic" && opts.llm !== false && !forcedType && !process.env.ANTHROPIC_API_KEY) {
-          console.log(c.dim("  hint: set ANTHROPIC_API_KEY for LLM classification + breakdown"));
+        if (broken.source === "deterministic" && opts.llm !== false && !forcedType && !hasApiKey()) {
+          console.log(c.dim("  hint: set a Claude key for LLM classification + breakdown — spear config set anthropicApiKey sk-ant-..."));
         }
         await triggerReplan(store, cfg);
       } finally {

@@ -8,6 +8,8 @@ export interface SpearConfig {
   port: number;
   /** When the launchd morning job fires (local time). */
   morning: { hour: number; minute: number };
+  /** Anthropic API key for the LLM calls. Falls back to $ANTHROPIC_API_KEY when unset. */
+  anthropicApiKey?: string;
   /** Claude model ids for the two LLM calls. */
   models: { breakdown: string; planner: string };
   /** Effort levels for the two LLM calls. */
@@ -45,6 +47,8 @@ export function saveConfig(cfg: SpearConfig): void {
   const p = configPath();
   fs.mkdirSync(path.dirname(p), { recursive: true });
   fs.writeFileSync(p, JSON.stringify(cfg, null, 2) + "\n");
+  // The config may hold an API key — keep it owner-only.
+  fs.chmodSync(p, 0o600);
 }
 
 /** Shallow-then-one-level-deep merge of user config over defaults. */

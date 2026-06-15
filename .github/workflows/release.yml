@@ -55,7 +55,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           npm_config_msvs_version: "2022"
-          # macOS build is unsigned (identity: null) — don't hunt for a cert.
+          # No Apple Developer ID (mac.identity: null) — don't hunt for a cert.
+          # The afterPack hook (scripts/afterPack.cjs) ad-hoc-signs the .app so the
+          # bundle is sealed; without that, electron-builder ships an unsealed app
+          # that Gatekeeper reports as "damaged". Users still clear the download
+          # quarantine once (xattr -dr com.apple.quarantine) until we notarize.
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
 
   # electron-builder uploads to a DRAFT release; flip it to published once both

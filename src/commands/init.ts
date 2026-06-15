@@ -44,7 +44,7 @@ export function registerInit(program: Command): void {
         console.log(`  ${DIM}launchd${RESET}${plistPath} (${cfg.morning.hour}:${String(cfg.morning.minute).padStart(2, "0")})`);
         console.log("");
         console.log(`${DIM}Next steps:${RESET}`);
-        console.log(`  export ANTHROPIC_API_KEY=...        ${DIM}# required for breakdown + planning${RESET}`);
+        console.log(`  spear config set anthropicApiKey sk-ant-...  ${DIM}# Claude key for breakdown + planning${RESET}`);
         console.log(`  launchctl load ${plistPath}   ${DIM}# enable the 8am morning plan${RESET}`);
         console.log(`  spear serve --open                  ${DIM}# start the dashboard${RESET}`);
       }

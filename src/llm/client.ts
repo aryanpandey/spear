@@ -1,13 +1,25 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { loadConfig } from "../config/index.js";
 
-/** Returns an Anthropic client, or null when ANTHROPIC_API_KEY is unset. */
+/**
+ * Resolve the Anthropic API key. The environment wins (handy for CLI / CI),
+ * then the spear config file (`~/.spear/config.json` -> `anthropicApiKey`) so the
+ * packaged desktop app — which never inherits your shell environment — can still
+ * reach Claude. Empty strings count as "no key".
+ */
+export function resolveApiKey(): string | undefined {
+  return process.env.ANTHROPIC_API_KEY || loadConfig().anthropicApiKey || undefined;
+}
+
+/** Returns an Anthropic client, or null when no API key is configured. */
 export function getAnthropic(): Anthropic | null {
-  if (!process.env.ANTHROPIC_API_KEY) return null;
-  return new Anthropic();
+  const apiKey = resolveApiKey();
+  if (!apiKey) return null;
+  return new Anthropic({ apiKey });
 }
 
 export function hasApiKey(): boolean {
-  return Boolean(process.env.ANTHROPIC_API_KEY);
+  return Boolean(resolveApiKey());
 }
 
 /**
