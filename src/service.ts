@@ -143,7 +143,11 @@ export function setTaskDue(store: Store, taskId: number, dueInput: string): Task
 /** Set a task's status explicitly. */
 export function setTaskStatus(store: Store, taskId: number, status: TaskStatus): Task {
   if (!store.getTask(taskId)) throw new Error(`task ${taskId} not found`);
-  store.updateTask(taskId, { status });
+  // A task whose stages are all complete IS done — never let an out-of-order
+  // status write (e.g. a "start" click that lands after "done") un-complete it.
+  const stages = store.getStages(taskId);
+  const allDone = stages.length > 0 && stages.every((s) => s.status === "done" || s.status === "skipped");
+  store.updateTask(taskId, { status: allDone ? "done" : status });
   return store.getTask(taskId)!;
 }
 

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { openDb } from "../db/index.js";
 import { Store } from "../db/store.js";
-import { addTask, blockTask } from "../service.js";
+import { addTask, blockTask, completeTask } from "../service.js";
 import { DEFAULT_CONFIG } from "../config/index.js";
 import { buildAndSavePlan } from "../planner/build.js";
 import { boardDto, todayDto } from "./dto.js";
@@ -66,5 +66,20 @@ describe("todayDto", () => {
     expect(first.stage.name).toBe("Plan");
     expect(first.scheduled_state).toBe("start_now");
     expect(dto.lanes[0].executor?.name).toBe("Me");
+  });
+
+  it("drops items for tasks that are done (completed work leaves the lanes)", async () => {
+    const store = freshStore();
+    const { task, stages } = addTask(store, { title: "Build login", priority: "high", stages: [{ name: "Plan", kind: "planning" }] });
+    const exec = store.listExecutors(true)[0];
+    const run = async () => ({
+      narrative: "n",
+      lanes: [{ lane: 0, executor_id: exec.id, items: [{ task_id: task.id, stage_id: stages[0].id, order: 0, is_delegation_candidate: false, scheduled_state: "start_now", rationale: "r" }] }],
+    });
+    await buildAndSavePlan(store, DEFAULT_CONFIG, "manual", run);
+    expect(todayDto(store).lanes.flatMap((l) => l.items)).toHaveLength(1); // shown while open
+
+    completeTask(store, task.id);
+    expect(todayDto(store).lanes.flatMap((l) => l.items)).toHaveLength(0); // gone once done
   });
 });

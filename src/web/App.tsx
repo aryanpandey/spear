@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Rain } from "./components/Rain";
 import { Board } from "./components/Board";
 import { Today } from "./components/Today";
@@ -20,15 +20,18 @@ export function App() {
   const [refreshing, setRefreshing] = useState(false);
   const [replanning, setReplanning] = useState(false);
 
+  const loadSeq = useRef(0);
   const load = useCallback(async () => {
+    const seq = ++loadSeq.current;
     try {
       const [b, t] = await Promise.all([fetchBoard(), fetchToday()]);
+      if (seq !== loadSeq.current) return; // a newer load() superseded this one — drop stale data
       setBoard(b);
       setToday(t);
       setUpdated(Date.now());
       setErr(null);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
+      if (seq === loadSeq.current) setErr(e instanceof Error ? e.message : String(e));
     }
   }, []);
 

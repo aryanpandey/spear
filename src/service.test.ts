@@ -114,6 +114,14 @@ describe("service flow advance + status rollup", () => {
     expect(store.getTask(task.id)!.status).toBe("in_progress");
   });
 
+  it("setTaskStatus cannot un-complete a fully-done task (rapid start→done race)", () => {
+    const { task } = addTask(store, { title: "Race", stages: [{ name: "s", kind: "generic" }] });
+    completeTask(store, task.id);
+    expect(store.getTask(task.id)!.status).toBe("done");
+    // a racing 'start' (set in_progress) arriving AFTER 'done' must not revert it
+    expect(setTaskStatus(store, task.id, "in_progress").status).toBe("done");
+  });
+
   it("block/unblock toggles blocked status", () => {
     const a = addTask(store, { title: "A", type: "chore" }).task;
     const b = addTask(store, { title: "B", type: "chore" }).task;
