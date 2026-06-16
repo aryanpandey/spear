@@ -1,13 +1,12 @@
 import { useState } from "react";
-import { createTasksFromIntake, type Intent, type Priority } from "../api";
+import { checkIntake, createTasksFromSeeds, type DuplicateMatch, type Intent, type Priority, type TaskSeed } from "../api";
 
 const PRIORITIES: Priority[] = ["critical", "high", "medium", "low"];
 
 /**
- * Inline capture for the Today tab. Routes through /api/tasks/intake: the prompt
- * (and an optional pasted image) is split into 1..N tasks, each broken into a
- * flow. Priority "auto" lets the server infer it; intent "auto" lets the LLM
- * classify task vs feature.
+ * Inline capture for the Today tab. Two-step: /intake/check extracts the task(s)
+ * and flags any that duplicate an existing task; if there are duplicates we show a
+ * warning with "Add anyway", otherwise we create immediately.
  */
 export function AddTask({ onAdded }: { onAdded: () => void }) {
   const [title, setTitle] = useState("");
@@ -16,6 +15,7 @@ export function AddTask({ onAdded }: { onAdded: () => void }) {
   const [image, setImage] = useState<string | null>(null); // data URL
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [pending, setPending] = useState<{ seeds: TaskSeed[]; duplicates: DuplicateMatch[] } | null>(null);
 
   function onPaste(e: React.ClipboardEvent<HTMLInputElement>) {
     const item = Array.from(e.clipboardData.items).find((i) => i.type.startsWith("image/"));
@@ -28,6 +28,18 @@ export function AddTask({ onAdded }: { onAdded: () => void }) {
     reader.readAsDataURL(file);
   }
 
+  function reset() {
+    setTitle("");
+    setImage(null);
+    setPending(null);
+  }
+
+  async function create(seeds: TaskSeed[]) {
+    await createTasksFromSeeds(seeds, intent === "auto" ? undefined : intent, priority === "auto" ? undefined : priority);
+    reset();
+    onAdded();
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     const t = title.trim();
@@ -35,21 +47,33 @@ export function AddTask({ onAdded }: { onAdded: () => void }) {
     setBusy(true);
     setErr(null);
     try {
-      await createTasksFromIntake({
-        prompt: t,
-        imageDataUrl: image ?? undefined,
-        intent: intent === "auto" ? undefined : intent,
-        priority: priority === "auto" ? undefined : priority,
-      });
-      setTitle("");
-      setImage(null);
-      onAdded();
+      const { seeds, duplicates } = await checkIntake({ prompt: t, imageDataUrl: image ?? undefined });
+      if (duplicates.length > 0) {
+        setPending({ seeds, duplicates });
+      } else {
+        await create(seeds);
+      }
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
     }
   }
+
+  async function addAnyway() {
+    if (!pending) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      await create(pending.seeds);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const titleFor = (i: number) => pending?.seeds[i]?.title ?? "this task";
 
   return (
     <form className="add-task" onSubmit={submit}>
@@ -97,6 +121,31 @@ export function AddTask({ onAdded }: { onAdded: () => void }) {
         {busy ? "…" : "add"}
       </button>
       {err && <span className="add-task-err">{err}</span>}
+
+      {pending && (
+        <div className="dup-warn">
+          <div className="dup-warn-head">⚠ possible duplicate{pending.duplicates.length > 1 ? "s" : ""}</div>
+          <ul className="dup-warn-list">
+            {pending.duplicates.map((d, i) => (
+              <li key={i}>
+                <span className="dup-new">“{titleFor(d.seedIndex)}”</span> looks like{" "}
+                <span className="dup-existing">
+                  #{d.taskId} “{d.title}” <span className="dup-status">({d.status})</span>
+                </span>{" "}
+                — {d.reason}
+              </li>
+            ))}
+          </ul>
+          <div className="dup-warn-actions">
+            <button type="button" className="add-task-btn" onClick={() => void addAnyway()} disabled={busy}>
+              {busy ? "…" : "Add anyway"}
+            </button>
+            <button type="button" className="dup-cancel" onClick={() => setPending(null)} disabled={busy}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </form>
   );
 }
