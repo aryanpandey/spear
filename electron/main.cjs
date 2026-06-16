@@ -2,8 +2,9 @@
 //
 // It boots the spear server in-process (sharing ~/.spear with the CLI) and opens
 // a window onto the local dashboard. Built dist/ is bundled by electron-builder.
-const { app, BrowserWindow, shell, dialog, ipcMain } = require("electron");
+const { app, BrowserWindow, shell, dialog, ipcMain, net } = require("electron");
 const path = require("node:path");
+const fs = require("node:fs");
 const { pathToFileURL } = require("node:url");
 const http = require("node:http");
 const { autoUpdater } = require("electron-updater");
@@ -69,12 +70,96 @@ function createWindow() {
   });
 }
 
-// Update flow: check GitHub Releases and PROMPT the user before downloading and
-// again before installing (no silent updates). Only meaningful in a packaged
-// build (the app-update.yml feed is baked in by electron-builder). Errors (e.g.
-// an unsigned macOS build, which Squirrel.Mac can't update) are logged.
+// Update flow: check GitHub Releases and PROMPT before doing anything (no silent
+// updates). Only meaningful in a packaged build (the app-update.yml feed is baked
+// in by electron-builder).
+//
+// macOS: the app is unsigned and ships as a .dmg, so Squirrel.Mac can't do an
+// in-place auto-update. Instead we download the new .dmg into ~/Downloads and
+// reveal it in Finder for the user to drag into Applications.
+// Windows: unsigned nsis can still auto-update in place, so that path is kept.
 let updaterWired = false;
 let manualCheck = false; // true when the user pressed Refresh, so we report "up to date"
+
+// owner/repo for constructing a release download URL (fallback if the in-app
+// manifest is unreachable). Read from the bundled package.json's publish config.
+function publishSlug() {
+  try {
+    const pkg = JSON.parse(fs.readFileSync(path.join(app.getAppPath(), "package.json"), "utf8"));
+    const p = pkg.build && pkg.build.publish;
+    if (p && p.owner && p.repo) return `${p.owner}/${p.repo}`;
+  } catch {
+    /* fall through */
+  }
+  return "aryanpandey/spear";
+}
+
+function fetchJson(url) {
+  return new Promise((resolve, reject) => {
+    http
+      .get(url, (res) => {
+        let data = "";
+        res.on("data", (c) => (data += c));
+        res.on("end", () => {
+          try {
+            resolve(JSON.parse(data));
+          } catch (e) {
+            reject(e);
+          }
+        });
+      })
+      .on("error", reject);
+  });
+}
+
+// Resolve the macOS .dmg download URL + filename for an available update.
+// Prefer the running server's GitHub manifest (absolute browser_download_url);
+// fall back to constructing the release URL from electron-updater's info.
+async function macInstallerInfo(info) {
+  try {
+    const m = await fetchJson(`${URL}/api/desktop/manifest`);
+    if (m && m.mac && m.mac.url && m.mac.file) return { url: m.mac.url, file: m.mac.file };
+  } catch {
+    /* fall through to constructed URL */
+  }
+  const file = (info && info.files && info.files[0] && info.files[0].url) || `spear-${info && info.version}-arm64.dmg`;
+  return {
+    url: `https://github.com/${publishSlug()}/releases/download/v${info && info.version}/${encodeURIComponent(file)}`,
+    file,
+  };
+}
+
+// Stream a file into the user's Downloads folder, showing dock progress.
+function downloadToDownloads(url, filename) {
+  const dest = path.join(app.getPath("downloads"), filename);
+  return new Promise((resolve, reject) => {
+    const request = net.request(url); // electron net follows GitHub→S3 redirects
+    request.on("response", (response) => {
+      const status = response.statusCode || 0;
+      if (status >= 400) {
+        reject(new Error(`download failed: HTTP ${status}`));
+        return;
+      }
+      const total = Number(response.headers["content-length"] || 0);
+      let received = 0;
+      const out = fs.createWriteStream(dest);
+      out.on("error", reject);
+      response.on("data", (chunk) => {
+        received += chunk.length;
+        out.write(chunk);
+        if (total && win && !win.isDestroyed()) win.setProgressBar(received / total);
+      });
+      response.on("end", () => {
+        out.end();
+        if (win && !win.isDestroyed()) win.setProgressBar(-1);
+        resolve(dest);
+      });
+      response.on("error", reject);
+    });
+    request.on("error", reject);
+    request.end();
+  });
+}
 
 function wireUpdater() {
   if (updaterWired) return;
@@ -91,6 +176,38 @@ function wireUpdater() {
 
   autoUpdater.on("update-available", async (info) => {
     manualCheck = false;
+
+    if (process.platform === "darwin") {
+      // Unsigned mac build: download the .dmg to ~/Downloads and reveal it.
+      const { response } = await dialog.showMessageBox({
+        type: "info",
+        buttons: ["Download", "Later"],
+        defaultId: 0,
+        cancelId: 1,
+        title: "Update available",
+        message: `spear ${info?.version} is available.`,
+        detail: "Download the installer to your Downloads folder? You'll then drag spear into Applications to finish.",
+      });
+      if (response !== 0) return;
+      try {
+        const { url, file } = await macInstallerInfo(info);
+        const dest = await downloadToDownloads(url, file);
+        shell.showItemInFolder(dest);
+        await dialog.showMessageBox({
+          type: "info",
+          buttons: ["OK"],
+          title: "Downloaded to Downloads",
+          message: `spear ${info?.version} was saved to your Downloads folder.`,
+          detail: "Open the .dmg and drag spear into Applications (replacing the old version) to finish updating.",
+        });
+      } catch (e) {
+        console.error("[spear] dmg download failed:", e?.message || e);
+        dialog.showMessageBox({ type: "warning", buttons: ["OK"], title: "Download failed", message: String(e?.message || e) });
+      }
+      return;
+    }
+
+    // Windows/Linux: in-place auto-update still works.
     const { response } = await dialog.showMessageBox({
       type: "info",
       buttons: ["Download", "Later"],
