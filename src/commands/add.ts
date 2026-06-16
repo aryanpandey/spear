@@ -16,6 +16,7 @@ interface AddOpts {
   due?: string;
   task?: boolean;
   feature?: boolean;
+  force?: boolean;
 }
 
 export function registerAdd(program: Command): void {
@@ -30,6 +31,7 @@ export function registerAdd(program: Command): void {
     .option("--due <date>", "due date (YYYY-MM-DD)")
     .option("--task", "force a lean, non-feature breakdown")
     .option("--feature", "force the full feature flow (planning → implementation → testing)")
+    .option("--force", "skip the duplicate-task check")
     .action(async (title: string, opts: AddOpts) => {
       const cfg = loadConfig();
       const explicitPriority = opts.priority
@@ -40,26 +42,51 @@ export function registerAdd(program: Command): void {
       const blockedBy = parseIds(opts.blockedBy);
       const due = opts.due ?? null;
 
-      let broken;
-      try {
-        broken = await breakdownForAdd({
-          title,
-          description: opts.description,
-          forcedType,
-          intent,
-          model: cfg.models.breakdown,
-          effort: cfg.effort.breakdown,
-          due,
-          explicitPriority,
-        });
-      } catch (err) {
-        console.error(c.red(`breakdown failed (claude CLI): ${err instanceof Error ? err.message : String(err)}`));
-        process.exitCode = 1;
-        return;
-      }
-
       const store = openStore();
       try {
+        if (!opts.force) {
+          const { findDuplicates } = await import("../llm/duplicates.js");
+          const existing = store.listTasks().map((t) => ({ id: t.id, title: t.title, status: t.status }));
+          let dups: { candidateIndex: number; taskId: number; reason: string }[] = [];
+          try {
+            dups = await findDuplicates([{ title, details: opts.description }], existing, {
+              model: cfg.models.duplicate,
+              effort: cfg.effort.duplicate,
+            });
+          } catch {
+            dups = []; // dup-check is best-effort; never block a capture on it
+          }
+          if (dups.length) {
+            const byId = new Map(store.listTasks().map((t) => [t.id, t]));
+            console.error(c.yellow("⚠ possible duplicate of an existing task:"));
+            for (const d of dups) {
+              const t = byId.get(d.taskId);
+              console.error(c.yellow(`  #${d.taskId} "${t?.title ?? "?"}" (${t?.status ?? "?"}) — ${d.reason}`));
+            }
+            console.error(c.dim("  use --force to add it anyway"));
+            process.exitCode = 1;
+            return;
+          }
+        }
+
+        let broken;
+        try {
+          broken = await breakdownForAdd({
+            title,
+            description: opts.description,
+            forcedType,
+            intent,
+            model: cfg.models.breakdown,
+            effort: cfg.effort.breakdown,
+            due,
+            explicitPriority,
+          });
+        } catch (err) {
+          console.error(c.red(`breakdown failed (claude CLI): ${err instanceof Error ? err.message : String(err)}`));
+          process.exitCode = 1;
+          return;
+        }
+
         const { task, stages } = addTask(store, {
           title: broken.title,
           description: opts.description,
