@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 import { Command } from "commander";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import { registerInit } from "./commands/init.js";
 import { registerAdd } from "./commands/add.js";
 import { registerList } from "./commands/list.js";
@@ -19,10 +22,15 @@ import { registerGoal } from "./commands/goal.js";
 
 const program = new Command();
 
+// Read the real version from package.json (one level up from dist/ or src/).
+const pkg = JSON.parse(
+  readFileSync(join(dirname(fileURLToPath(import.meta.url)), "../package.json"), "utf8"),
+) as { version: string };
+
 program
   .name("spear")
   .description("Local, Matrix-themed project tracker with an LLM execution-flow planner")
-  .version("0.1.0");
+  .version(pkg.version);
 
 registerInit(program);
 registerAdd(program);
