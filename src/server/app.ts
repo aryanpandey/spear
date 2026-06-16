@@ -8,7 +8,9 @@ import { fileURLToPath } from "node:url";
 import type { Store } from "../db/store.js";
 import type { SpearConfig } from "../config/index.js";
 import { saveConfig } from "../config/index.js";
-import { intakeTasks, mimeExt } from "./intake.js";
+import { intakeTasks, extractSeedsForIntake, createTasksFromSeeds, mimeExt, type IntakeParams } from "./intake.js";
+import { checkSeedsForDuplicates } from "./duplicateCheck.js";
+import type { TaskSeed } from "../llm/intake.js";
 import { addTask, advanceTask, completeTask, removeTask, setTaskDue, setTaskPriority, setTaskStatus } from "../service.js";
 import { breakdownForAdd } from "../breakdown/index.js";
 import { PRIORITIES, TASK_STATUSES, TASK_TYPES, type Priority, type TaskStatus, type TaskType } from "../types.js";
@@ -178,6 +180,71 @@ export function buildServer(store: Store, cfg: SpearConfig): SpearServer {
           /* best-effort cleanup */
         }
       }
+    }
+  });
+
+  // ---- intake step 1: extract seeds + check for duplicates (no creation) ----
+  app.post("/api/tasks/intake/check", async (req, reply) => {
+    const body = (req.body ?? {}) as { prompt?: string; image?: { mime?: string; dataB64?: string } };
+    const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
+    const hasImage = !!body.image?.dataB64;
+    if (!prompt && !hasImage) {
+      reply.code(400);
+      return { error: "prompt or image required" };
+    }
+    let imagePath: string | undefined;
+    if (hasImage) {
+      imagePath = path.join(os.tmpdir(), `spear-intake-${randomUUID()}.${mimeExt(body.image!.mime)}`);
+      fs.writeFileSync(imagePath, Buffer.from(body.image!.dataB64!, "base64"));
+    }
+    try {
+      const params: IntakeParams = { prompt, imagePath };
+      const seeds = await extractSeedsForIntake(cfg, params);
+      const duplicates = await checkSeedsForDuplicates(store, cfg, seeds);
+      return { seeds, duplicates };
+    } catch (err) {
+      reply.code(502);
+      return { error: `intake check failed: ${err instanceof Error ? err.message : String(err)}` };
+    } finally {
+      if (imagePath) {
+        try {
+          fs.unlinkSync(imagePath);
+        } catch {
+          /* best-effort cleanup */
+        }
+      }
+    }
+  });
+
+  // ---- intake step 2: create tasks from already-extracted seeds ----
+  app.post("/api/tasks/intake/create", async (req, reply) => {
+    const body = (req.body ?? {}) as { seeds?: TaskSeed[]; intent?: string; priority?: string };
+    const seeds = Array.isArray(body.seeds)
+      ? body.seeds
+          .filter((s) => s && typeof s.title === "string")
+          .map((s) => ({ title: s.title, details: typeof s.details === "string" ? s.details : "" }))
+      : [];
+    if (seeds.length === 0) {
+      reply.code(400);
+      return { error: "seeds required" };
+    }
+    const explicitPriority = body.priority ? (body.priority as Priority) : undefined;
+    if (explicitPriority && !PRIORITIES.includes(explicitPriority)) {
+      reply.code(400);
+      return { error: "invalid priority" };
+    }
+    const intent = body.intent === "task" || body.intent === "feature" ? body.intent : undefined;
+    try {
+      const { taskIds } = await createTasksFromSeeds(store, cfg, seeds, { intent, priority: explicitPriority });
+      if (taskIds.length === 0) {
+        reply.code(502);
+        return { error: "no tasks could be created" };
+      }
+      replanner.requestReplan("adhoc");
+      return { count: taskIds.length, taskIds };
+    } catch (err) {
+      reply.code(502);
+      return { error: `intake create failed: ${err instanceof Error ? err.message : String(err)}` };
     }
   });
 
