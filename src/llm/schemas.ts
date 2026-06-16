@@ -42,3 +42,28 @@ export const PlanSchema = z.object({
   lanes: z.array(PlanLaneSchema),
 });
 export type PlanOutput = z.infer<typeof PlanSchema>;
+
+// ---- Intake (image/text → task seeds) ----
+
+export const IntakeSchema = z.object({
+  seeds: z.array(
+    z.object({
+      title: z.string().describe("Short imperative task title"),
+      details: z.string().describe("One or two sentences of context for the breakdown"),
+    }),
+  ),
+});
+export type IntakeOutput = z.infer<typeof IntakeSchema>;
+
+// ---- Suggested due dates ----
+
+export const SuggestDueSchema = z.object({
+  suggestions: z.array(
+    z.object({
+      task_id: z.number().int(),
+      date: z.string().describe("YYYY-MM-DD, today or later"),
+      reason: z.string().describe("One short clause: why this date"),
+    }),
+  ),
+});
+export type SuggestDueOutput = z.infer<typeof SuggestDueSchema>;
