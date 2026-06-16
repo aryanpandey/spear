@@ -8,10 +8,14 @@ export interface SpearConfig {
   port: number;
   /** When the launchd morning job fires (local time). */
   morning: { hour: number; minute: number };
-  /** Claude model ids for the two LLM calls. */
-  models: { breakdown: string; planner: string };
-  /** Effort levels for the two LLM calls. */
-  effort: { breakdown: "low" | "medium" | "high" | "max"; planner: "low" | "medium" | "high" | "max" };
+  /** Claude model ids for the LLM calls. */
+  models: { breakdown: string; planner: string; duplicate: string };
+  /** Effort levels for the LLM calls. */
+  effort: {
+    breakdown: "low" | "medium" | "high" | "max";
+    planner: "low" | "medium" | "high" | "max";
+    duplicate: "low" | "medium" | "high" | "max";
+  };
   /** Default priority applied to `spear add` when --priority is omitted. */
   defaultPriority: Priority;
   /** Maximum number of lanes in the execution flow; extra themes are folded in. */
@@ -23,8 +27,8 @@ export interface SpearConfig {
 export const DEFAULT_CONFIG: SpearConfig = {
   port: 4317,
   morning: { hour: 8, minute: 0 },
-  models: { breakdown: "claude-opus-4-8", planner: "claude-opus-4-8" },
-  effort: { breakdown: "low", planner: "medium" },
+  models: { breakdown: "claude-opus-4-8", planner: "claude-opus-4-8", duplicate: "claude-sonnet-4-6" },
+  effort: { breakdown: "low", planner: "medium", duplicate: "low" },
   defaultPriority: "medium",
   maxLanes: 6,
   replanDebounceMs: 4000,
