@@ -671,3 +671,23 @@ main { padding: 18px 20px 40px; flex: 1; }
 .dl-err { color: var(--crit); font-size: 11px; }
 .dl-foot { color: var(--text-dim); font-size: 10px; margin-top: 8px; border-top: 1px dashed var(--border); padding-top: 6px; }
 .dl-foot code { color: var(--cyan); }
+
+/* ---- v0.1.18: intake image, suggested-due chip, lane control ---- */
+.add-task-img { display: inline-flex; align-items: center; gap: 4px; }
+.add-task-img img { height: 28px; width: auto; border: 1px solid var(--green, #00ff41); border-radius: 3px; image-rendering: auto; }
+.add-task-img-x { background: none; border: none; color: var(--crit, #ff5577); cursor: pointer; font-size: 12px; padding: 0 2px; }
+
+.due-suggest {
+  background: rgba(0, 255, 65, 0.08);
+  border: 1px dashed var(--green, #00ff41);
+  color: var(--green, #00ff41);
+  border-radius: 3px;
+  font-size: 11px;
+  padding: 1px 5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.due-suggest:hover { background: rgba(0, 255, 65, 0.16); }
+
+.lanes-ctl { display: inline-flex; align-items: center; gap: 4px; color: var(--dim, #6f9f7f); font-size: 12px; }
+.lanes-ctl select { background: #0a0e0a; color: var(--green, #00ff41); border: 1px solid var(--green, #00ff41); border-radius: 3px; font-size: 12px; padding: 1px 4px; }
