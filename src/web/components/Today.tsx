@@ -50,6 +50,15 @@ function DueEditor({ item, onChange }: { item: TodayItem; onChange: () => void }
           onChange={(e) => e.target.value && void apply(e.target.value)}
           onBlur={() => setEditing(false)}
         />
+        {!item.due && item.suggestedDue && (
+          <button
+            className="due-suggest"
+            title={item.suggestedDueReason ?? "spear's suggestion"}
+            onMouseDown={() => void apply(item.suggestedDue!)}
+          >
+            ☆ {fmtDue(item.suggestedDue)}
+          </button>
+        )}
         {item.due && (
           <button className="due-clear" title="Clear deadline" onMouseDown={() => void apply(null)}>
             ✕
