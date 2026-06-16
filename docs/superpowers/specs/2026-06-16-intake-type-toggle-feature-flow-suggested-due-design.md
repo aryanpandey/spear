@@ -17,6 +17,9 @@ Four related additions to spear's task-capture pipeline, all keeping the LLM-onl
 - **C. Auto / Task / Feature toggle.** An explicit intent selector on capture.
 - **D. Pre-computed suggested due dates.** A background pass stores a suggested due date +
   reason for every task lacking a real deadline, so clicking `due` shows it instantly.
+- **E. Configurable lane count.** A control in the dashboard header sets the planner's
+  `maxLanes`; changing it persists to config and triggers a re-plan that reorders everything
+  into the requested number of lanes.
 
 No new runtime dependencies. Reuses the `claudeStructured` + `zod/v4` CLI path.
 
@@ -119,6 +122,20 @@ Migration adds two nullable columns to `tasks`: `suggested_due TEXT`,
 - If no suggestion is stored yet, the chip simply doesn't render.
 - Setting a real due date makes the suggestion irrelevant (only shown when `due` is empty).
 - Task DTO (`src/server/dto.ts`) includes `suggestedDue` + `suggestedDueReason`.
+
+## E. Configurable lane count
+
+`cfg.maxLanes` already flows `cfg → llmPlan → systemPrompt(maxLanes)` and bounds how the
+planner groups themes into lanes. Expose it:
+
+- **Server:** `GET /api/config` → `{ maxLanes }`. `POST /api/config/lanes` `{ lanes }` →
+  validate integer in `[1, 8]`, **mutate `cfg.maxLanes` in place** (the running `Replanner`
+  holds the same `cfg` object, so the next plan picks it up), `saveConfig(cfg)` to persist for
+  next boot, then `replanner.requestReplan("manual")`.
+- **Web:** `fetchConfig()` + `setMaxLanes(n)`; a small selector in the header (`App.tsx` `.bar`)
+  showing the current count. Changing it calls `setMaxLanes` — the re-plan's SSE refresh updates
+  the board.
+- No new persisted state beyond the existing `config.json`.
 
 ## Cross-cutting
 
