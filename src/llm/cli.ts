@@ -68,10 +68,21 @@ export interface ClaudeOpts {
   effort?: "low" | "medium" | "high" | "max";
   cliPath?: string;
   timeoutMs?: number;
+  /** Tool names to allow in headless mode (e.g. ["Read"] so the model can open an attached image). */
+  allowedTools?: string[];
 }
 
 /** The injectable shape the LLM modules depend on (so tests can fake the CLI). */
 export type ClaudeRunner = (prompt: string, opts?: ClaudeOpts) => Promise<unknown>;
+
+/** Build the argv for a `claude -p` headless JSON call. Pure, so it can be unit-tested. */
+export function buildClaudeArgs(prompt: string, opts: ClaudeOpts): string[] {
+  const args = ["-p", prompt, "--output-format", "json"];
+  if (opts.model) args.push("--model", opts.model);
+  if (opts.effort) args.push("--effort", opts.effort);
+  if (opts.allowedTools && opts.allowedTools.length) args.push("--allowedTools", opts.allowedTools.join(" "));
+  return args;
+}
 
 /**
  * Run a one-shot headless prompt through the Claude Code CLI and return the
@@ -83,9 +94,7 @@ export const claudeJson: ClaudeRunner = async (prompt, opts = {}) => {
   if (!bin) {
     throw new Error("claude CLI not found — install Claude Code or set config `claudeCliPath`");
   }
-  const args = ["-p", prompt, "--output-format", "json"];
-  if (opts.model) args.push("--model", opts.model);
-  if (opts.effort) args.push("--effort", opts.effort);
+  const args = buildClaudeArgs(prompt, opts);
 
   const { stdout } = await execFileP(bin, args, {
     maxBuffer: 32 * 1024 * 1024,
