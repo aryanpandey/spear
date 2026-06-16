@@ -14,6 +14,8 @@ interface AddOpts {
   blockedBy?: string;
   description?: string;
   due?: string;
+  task?: boolean;
+  feature?: boolean;
 }
 
 export function registerAdd(program: Command): void {
@@ -26,12 +28,15 @@ export function registerAdd(program: Command): void {
     .option("-b, --blocked-by <ids>", "comma/space separated task ids this is blocked by")
     .option("-d, --description <text>", "longer description for the LLM / your notes")
     .option("--due <date>", "due date (YYYY-MM-DD)")
+    .option("--task", "force a lean, non-feature breakdown")
+    .option("--feature", "force the full feature flow (planning → implementation → testing)")
     .action(async (title: string, opts: AddOpts) => {
       const cfg = loadConfig();
       const explicitPriority = opts.priority
         ? (assertEnum("priority", opts.priority, PRIORITIES) as Priority)
         : undefined;
       const forcedType = opts.type ? (assertEnum("type", opts.type, TASK_TYPES) as TaskType) : undefined;
+      const intent = opts.feature ? "feature" : opts.task ? "task" : undefined;
       const blockedBy = parseIds(opts.blockedBy);
       const due = opts.due ?? null;
 
@@ -41,6 +46,7 @@ export function registerAdd(program: Command): void {
           title,
           description: opts.description,
           forcedType,
+          intent,
           model: cfg.models.breakdown,
           effort: cfg.effort.breakdown,
           due,
