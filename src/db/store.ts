@@ -188,6 +188,11 @@ export class Store {
     this.db.prepare("UPDATE tasks SET lane = ? WHERE id = ?").run(lane, id);
   }
 
+  /** Store the pre-computed due-date suggestion (plan-internal; does not bump updated_at). */
+  setSuggestedDue(id: number, date: string | null, reason: string | null): void {
+    this.db.prepare("UPDATE tasks SET suggested_due = ?, suggested_due_reason = ? WHERE id = ?").run(date, reason, id);
+  }
+
   // ---- meta (key/value) ----
 
   getMeta(key: string): string | null {
@@ -648,6 +653,8 @@ interface TaskRow {
   status: string;
   effort: string | null;
   due: string | null;
+  suggested_due: string | null;
+  suggested_due_reason: string | null;
   source: string;
   external_id: string | null;
   lane: number | null;

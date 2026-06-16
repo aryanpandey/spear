@@ -53,6 +53,9 @@ export interface Task {
   status: TaskStatus;
   effort: Effort | null;
   due: string | null;
+  /** LLM-suggested due date for tasks without a real deadline (and a short reason). */
+  suggested_due: string | null;
+  suggested_due_reason: string | null;
   source: string;
   external_id: string | null;
   /** Persistent lane assignment (sticky across replans); null until first planned. */

@@ -75,3 +75,20 @@ describe("Store", () => {
     expect(items[0].scheduled_state).toBe("start_now");
   });
 });
+
+describe("suggested due", () => {
+  it("stores and returns a suggested due date + reason", () => {
+    const store = freshStore();
+    const t = store.createTask({ title: "x" });
+    store.setSuggestedDue(t.id, "2026-06-20", "high priority, light load that day");
+    const got = store.getTask(t.id)!;
+    expect(got.suggested_due).toBe("2026-06-20");
+    expect(got.suggested_due_reason).toBe("high priority, light load that day");
+  });
+
+  it("defaults to null for a fresh task", () => {
+    const store = freshStore();
+    const t = store.createTask({ title: "y" });
+    expect(store.getTask(t.id)!.suggested_due).toBeNull();
+  });
+});

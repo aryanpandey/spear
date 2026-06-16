@@ -24,4 +24,6 @@ export function openDb(file?: string): DB {
 function migrate(db: DB): void {
   const cols = (db.prepare("PRAGMA table_info(tasks)").all() as { name: string }[]).map((r) => r.name);
   if (!cols.includes("lane")) db.exec("ALTER TABLE tasks ADD COLUMN lane INTEGER");
+  if (!cols.includes("suggested_due")) db.exec("ALTER TABLE tasks ADD COLUMN suggested_due TEXT");
+  if (!cols.includes("suggested_due_reason")) db.exec("ALTER TABLE tasks ADD COLUMN suggested_due_reason TEXT");
 }
