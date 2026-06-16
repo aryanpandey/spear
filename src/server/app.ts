@@ -420,5 +420,6 @@ export function buildServer(store: Store, cfg: SpearConfig): SpearServer {
 export async function startServer(store: Store, cfg: SpearConfig, port: number): Promise<SpearServer> {
   const server = buildServer(store, cfg);
   await server.app.listen({ port, host: "127.0.0.1" });
+  void server.replanner.refreshSuggestedDue(); // backfill suggestions for any undated tasks
   return server;
 }
