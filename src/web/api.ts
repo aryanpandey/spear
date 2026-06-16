@@ -2,6 +2,7 @@
 
 export type Priority = "critical" | "high" | "medium" | "low";
 export type TaskType = "feature" | "bug" | "chore" | "research" | "other";
+export type Intent = "task" | "feature";
 export type TaskStatus = "backlog" | "todo" | "in_progress" | "blocked" | "done";
 export type StageStatus = "todo" | "in_progress" | "done" | "skipped";
 export type StageKind = "planning" | "implementation" | "testing" | "stage_testing" | "generic";
@@ -88,6 +89,54 @@ export async function createTask(title: string, priority?: Priority): Promise<vo
     body: JSON.stringify(body),
   });
   if (!r.ok) throw new Error(`add ${r.status}`);
+}
+
+/**
+ * Multimodal / multi-task intake: a prompt and/or a pasted image become 1..N
+ * tasks. `imageDataUrl` is a `data:<mime>;base64,<...>` string (from a paste).
+ */
+export async function createTasksFromIntake(params: {
+  prompt: string;
+  imageDataUrl?: string;
+  intent?: Intent;
+  priority?: Priority;
+}): Promise<{ count: number; taskIds: number[] }> {
+  const body: {
+    prompt: string;
+    intent?: Intent;
+    priority?: Priority;
+    image?: { mime: string; dataB64: string };
+  } = { prompt: params.prompt };
+  if (params.intent) body.intent = params.intent;
+  if (params.priority) body.priority = params.priority;
+  if (params.imageDataUrl) {
+    const m = /^data:([^;]+);base64,(.*)$/.exec(params.imageDataUrl);
+    if (m) body.image = { mime: m[1], dataB64: m[2] };
+  }
+  const r = await fetch("/api/tasks/intake", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error(`intake ${r.status}`);
+  return r.json();
+}
+
+export async function fetchConfig(): Promise<{ maxLanes: number }> {
+  const r = await fetch("/api/config");
+  if (!r.ok) throw new Error(`config ${r.status}`);
+  return r.json();
+}
+
+/** Set the planner's lane count; the server persists it and re-plans. */
+export async function setMaxLanes(lanes: number): Promise<{ maxLanes: number }> {
+  const r = await fetch("/api/config/lanes", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ lanes }),
+  });
+  if (!r.ok) throw new Error(`lanes ${r.status}`);
+  return r.json();
 }
 
 export async function setTaskStatus(id: number, status: TaskStatus): Promise<void> {
