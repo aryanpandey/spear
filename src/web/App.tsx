@@ -7,7 +7,7 @@ import { Goals } from "./components/Goals";
 import { AddTask } from "./components/AddTask";
 import { DesktopButton } from "./components/DesktopButton";
 import { Logo } from "./components/Logo";
-import { fetchBoard, fetchToday, type BoardData, type TodayData } from "./api";
+import { fetchBoard, fetchToday, fetchConfig, setMaxLanes, type BoardData, type TodayData } from "./api";
 
 type Tab = "today" | "board" | "week" | "goals";
 
@@ -19,6 +19,7 @@ export function App() {
   const [err, setErr] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [replanning, setReplanning] = useState(false);
+  const [lanes, setLanes] = useState<number>(6);
 
   const loadSeq = useRef(0);
   const load = useCallback(async () => {
@@ -49,8 +50,20 @@ export function App() {
 
   // Live updates via SSE; the server pushes on every mutation/re-plan.
   // A slow interval is a safety net if the stream drops.
+  const changeLanes = useCallback(async (n: number) => {
+    setLanes(n); // optimistic; the re-plan's SSE will refresh the board
+    try {
+      await setMaxLanes(n);
+    } catch {
+      /* leave the optimistic value; next fetchConfig corrects it */
+    }
+  }, []);
+
   useEffect(() => {
     load();
+    fetchConfig()
+      .then((c) => setLanes(c.maxLanes))
+      .catch(() => {});
     const es = new EventSource("/events");
     let safetyTimer: number | undefined;
     es.onmessage = (e) => {
@@ -104,6 +117,16 @@ export function App() {
             Goals
           </button>
         </div>
+        <label className="lanes-ctl" title="Max parallel lanes — changing this re-plans the board">
+          lanes
+          <select value={lanes} onChange={(e) => void changeLanes(Number(e.target.value))}>
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </label>
         <div className="spacer" />
         <button
           className="tab"
