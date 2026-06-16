@@ -7,6 +7,8 @@ export interface BreakdownRequest {
   description?: string;
   /** When set, the LLM uses this type instead of classifying. */
   forcedType?: TaskType;
+  /** Explicit capture intent: 'feature' forces the full feature flow, 'task' forces a lean non-feature. */
+  intent?: "task" | "feature";
   model: string;
   effort: "low" | "medium" | "high" | "max";
   due?: string | null;
