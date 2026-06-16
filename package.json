@@ -1,6 +1,6 @@
 {
   "name": "spear",
-  "version": "0.1.17",
+  "version": "0.1.18",
   "description": "Local, Matrix-themed personal project-tracking dashboard with an LLM execution-flow planner",
   "type": "module",
   "main": "electron/main.cjs",
