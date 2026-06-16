@@ -1,10 +1,14 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import fastifyStatic from "@fastify/static";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import type { Store } from "../db/store.js";
 import type { SpearConfig } from "../config/index.js";
+import { saveConfig } from "../config/index.js";
+import { intakeTasks, mimeExt } from "./intake.js";
 import { addTask, advanceTask, completeTask, removeTask, setTaskDue, setTaskPriority, setTaskStatus } from "../service.js";
 import { breakdownForAdd } from "../breakdown/index.js";
 import { PRIORITIES, TASK_STATUSES, TASK_TYPES, type Priority, type TaskStatus, type TaskType } from "../types.js";
@@ -127,6 +131,70 @@ export function buildServer(store: Store, cfg: SpearConfig): SpearServer {
     });
     replanner.requestReplan("adhoc");
     return { task };
+  });
+
+  // ---- multimodal / multi-task intake (image + text → 1..N tasks) ----
+  app.post("/api/tasks/intake", async (req, reply) => {
+    const body = (req.body ?? {}) as {
+      prompt?: string;
+      intent?: string;
+      priority?: string;
+      image?: { mime?: string; dataB64?: string };
+    };
+    const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
+    const hasImage = !!body.image?.dataB64;
+    if (!prompt && !hasImage) {
+      reply.code(400);
+      return { error: "prompt or image required" };
+    }
+    const explicitPriority = body.priority ? (body.priority as Priority) : undefined;
+    if (explicitPriority && !PRIORITIES.includes(explicitPriority)) {
+      reply.code(400);
+      return { error: "invalid priority" };
+    }
+    const intent = body.intent === "task" || body.intent === "feature" ? body.intent : undefined;
+
+    let imagePath: string | undefined;
+    if (hasImage) {
+      imagePath = path.join(os.tmpdir(), `spear-intake-${randomUUID()}.${mimeExt(body.image!.mime)}`);
+      fs.writeFileSync(imagePath, Buffer.from(body.image!.dataB64!, "base64"));
+    }
+    try {
+      const { taskIds } = await intakeTasks(store, cfg, { prompt, imagePath, intent, priority: explicitPriority });
+      if (taskIds.length === 0) {
+        reply.code(502);
+        return { error: "no tasks could be created" };
+      }
+      replanner.requestReplan("adhoc");
+      return { count: taskIds.length, taskIds };
+    } catch (err) {
+      reply.code(502);
+      return { error: `intake failed: ${err instanceof Error ? err.message : String(err)}` };
+    } finally {
+      if (imagePath) {
+        try {
+          fs.unlinkSync(imagePath);
+        } catch {
+          /* best-effort cleanup */
+        }
+      }
+    }
+  });
+
+  // ---- config (lane count) ----
+  app.get("/api/config", async () => ({ maxLanes: cfg.maxLanes }));
+
+  app.post("/api/config/lanes", async (req, reply) => {
+    const body = (req.body ?? {}) as { lanes?: number };
+    const n = Number(body.lanes);
+    if (!Number.isInteger(n) || n < 1 || n > 8) {
+      reply.code(400);
+      return { error: "lanes must be an integer 1–8" };
+    }
+    cfg.maxLanes = n; // mutate the object the Replanner holds, so the next plan uses it
+    saveConfig(cfg); // persist for next boot
+    replanner.requestReplan("manual"); // reorder everything into the new lane count
+    return { maxLanes: n };
   });
 
   app.post<{ Params: { id: string } }>("/api/tasks/:id/advance", async (req) => {
