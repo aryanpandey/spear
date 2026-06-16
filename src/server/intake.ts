@@ -35,24 +35,31 @@ export function mimeExt(mime?: string): string {
   }
 }
 
-/**
- * Turn a capture (prompt + optional image) into 1..N tasks: extract seeds, then
- * break each down in parallel and insert it. Per-seed failures are skipped (the
- * rest still land). Returns the ids of the tasks created. Does NOT re-plan — the
- * caller decides when to trigger that.
- */
-export async function intakeTasks(
-  store: Store,
+/** Extraction half: prompt (+ optional image) → task seeds. */
+export async function extractSeedsForIntake(
   cfg: SpearConfig,
   params: IntakeParams,
   deps: IntakeDeps = {},
-): Promise<{ taskIds: number[] }> {
+): Promise<TaskSeed[]> {
   const extract =
     deps.extract ??
     ((prompt: string, imagePath: string | undefined) =>
       extractTaskSeeds(prompt, imagePath, { model: cfg.models.breakdown, effort: "low" }));
-  const seeds = await extract(params.prompt, params.imagePath, { model: cfg.models.breakdown, effort: "low" });
+  return extract(params.prompt, params.imagePath, { model: cfg.models.breakdown, effort: "low" });
+}
 
+/**
+ * Create half: break each seed down in parallel and insert it. Per-seed failures
+ * are skipped (the rest still land). Returns the ids created. Does NOT re-plan —
+ * the caller decides when to trigger that.
+ */
+export async function createTasksFromSeeds(
+  store: Store,
+  cfg: SpearConfig,
+  seeds: TaskSeed[],
+  params: { intent?: "task" | "feature"; priority?: Priority },
+  deps: IntakeDeps = {},
+): Promise<{ taskIds: number[] }> {
   const settled = await Promise.allSettled(
     seeds.map(async (seed) => {
       const broken = await breakdownForAdd(
@@ -79,4 +86,15 @@ export async function intakeTasks(
 
   const taskIds = settled.filter((r): r is PromiseFulfilledResult<number> => r.status === "fulfilled").map((r) => r.value);
   return { taskIds };
+}
+
+/** Combined intake (extract → create) — unchanged behavior. */
+export async function intakeTasks(
+  store: Store,
+  cfg: SpearConfig,
+  params: IntakeParams,
+  deps: IntakeDeps = {},
+): Promise<{ taskIds: number[] }> {
+  const seeds = await extractSeedsForIntake(cfg, params, deps);
+  return createTasksFromSeeds(store, cfg, seeds, params, deps);
 }
