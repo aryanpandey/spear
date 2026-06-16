@@ -3,6 +3,18 @@
 export type Priority = "critical" | "high" | "medium" | "low";
 export type TaskType = "feature" | "bug" | "chore" | "research" | "other";
 export type Intent = "task" | "feature";
+
+export interface TaskSeed {
+  title: string;
+  details: string;
+}
+export interface DuplicateMatch {
+  seedIndex: number;
+  taskId: number;
+  title: string;
+  status: TaskStatus;
+  reason: string;
+}
 export type TaskStatus = "backlog" | "todo" | "in_progress" | "blocked" | "done";
 export type StageStatus = "todo" | "in_progress" | "done" | "skipped";
 export type StageKind = "planning" | "implementation" | "testing" | "stage_testing" | "generic";
@@ -119,6 +131,43 @@ export async function createTasksFromIntake(params: {
     body: JSON.stringify(body),
   });
   if (!r.ok) throw new Error(`intake ${r.status}`);
+  return r.json();
+}
+
+/** Intake step 1: extract seeds + check for duplicates. Creates nothing. */
+export async function checkIntake(params: {
+  prompt: string;
+  imageDataUrl?: string;
+}): Promise<{ seeds: TaskSeed[]; duplicates: DuplicateMatch[] }> {
+  const body: { prompt: string; image?: { mime: string; dataB64: string } } = { prompt: params.prompt };
+  if (params.imageDataUrl) {
+    const m = /^data:([^;]+);base64,(.*)$/.exec(params.imageDataUrl);
+    if (m) body.image = { mime: m[1], dataB64: m[2] };
+  }
+  const r = await fetch("/api/tasks/intake/check", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error(`check ${r.status}`);
+  return r.json();
+}
+
+/** Intake step 2: create tasks from already-extracted seeds. */
+export async function createTasksFromSeeds(
+  seeds: TaskSeed[],
+  intent?: Intent,
+  priority?: Priority,
+): Promise<{ count: number; taskIds: number[] }> {
+  const body: { seeds: TaskSeed[]; intent?: Intent; priority?: Priority } = { seeds };
+  if (intent) body.intent = intent;
+  if (priority) body.priority = priority;
+  const r = await fetch("/api/tasks/intake/create", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error(`create ${r.status}`);
   return r.json();
 }
 
