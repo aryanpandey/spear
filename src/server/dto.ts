@@ -79,6 +79,8 @@ export interface TodayItemDto {
   is_delegation_candidate: boolean;
   rationale: string;
   due: string | null;
+  suggestedDue: string | null;
+  suggestedDueReason: string | null;
   dueBand: DueBand;
   task: { id: number; title: string; priority: Priority; type: TaskType; status: TaskStatus };
   stage: { id: number; name: string; kind: StageKind; status: StageStatus; effort: Effort | null };
@@ -121,6 +123,8 @@ export function todayDto(store: Store): TodayDto {
       is_delegation_candidate: it.is_delegation_candidate,
       rationale: it.rationale,
       due: task.due,
+      suggestedDue: task.suggested_due,
+      suggestedDueReason: task.suggested_due_reason,
       dueBand: dueBand(task.due, now),
       task: { id: task.id, title: task.title, priority: task.priority, type: task.type, status: task.status },
       stage: { id: stage.id, name: stage.name, kind: stage.kind, status: stage.status, effort: stage.effort },

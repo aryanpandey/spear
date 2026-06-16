@@ -82,4 +82,20 @@ describe("todayDto", () => {
     completeTask(store, task.id);
     expect(todayDto(store).lanes.flatMap((l) => l.items)).toHaveLength(0); // gone once done
   });
+
+  it("includes the stored due-date suggestion on the item", async () => {
+    const store = freshStore();
+    const { task, stages } = addTask(store, { title: "Build login", priority: "high", stages: [{ name: "Plan", kind: "planning" }] });
+    store.setSuggestedDue(task.id, "2026-06-22", "balanced load");
+    const exec = store.listExecutors(true)[0];
+    const run = async () => ({
+      narrative: "n",
+      lanes: [{ lane: 0, executor_id: exec.id, items: [{ task_id: task.id, stage_id: stages[0].id, order: 0, is_delegation_candidate: false, scheduled_state: "start_now", rationale: "r" }] }],
+    });
+    await buildAndSavePlan(store, DEFAULT_CONFIG, "manual", run);
+
+    const item = todayDto(store).lanes[0].items[0];
+    expect(item.suggestedDue).toBe("2026-06-22");
+    expect(item.suggestedDueReason).toBe("balanced load");
+  });
 });

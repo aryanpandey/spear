@@ -43,6 +43,8 @@ export interface TodayItem {
   is_delegation_candidate: boolean;
   rationale: string;
   due: string | null;
+  suggestedDue: string | null;
+  suggestedDueReason: string | null;
   dueBand: DueBand;
   task: { id: number; title: string; priority: Priority; type: TaskType; status: TaskStatus };
   stage: { id: number; name: string; kind: StageKind; status: StageStatus; effort: string | null };
