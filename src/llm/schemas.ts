@@ -67,3 +67,16 @@ export const SuggestDueSchema = z.object({
   ),
 });
 export type SuggestDueOutput = z.infer<typeof SuggestDueSchema>;
+
+// ---- Duplicate detection ----
+
+export const DuplicateSchema = z.object({
+  matches: z.array(
+    z.object({
+      candidate_index: z.number().int().describe("Index into the candidates array"),
+      task_id: z.number().int().describe("Existing task id it duplicates"),
+      reason: z.string().describe("One short clause: why they are the same"),
+    }),
+  ),
+});
+export type DuplicateOutput = z.infer<typeof DuplicateSchema>;
