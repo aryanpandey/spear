@@ -3,6 +3,13 @@
 All notable changes to spear. Format loosely follows [Keep a Changelog](https://keepachangelog.com);
 versions are the `vX.Y.Z` git tags that trigger a dmg/exe release.
 
+## [0.1.21] — 2026-06-17
+### Added
+- **Confirm-and-edit before creating** — when a capture is uncertain (an image was used, 2+ tasks were
+  extracted, or a duplicate was flagged) the add bar shows an editable popup: tweak each task's title
+  and details or remove it, then create. A single typed task with no duplicate still creates instantly.
+- **Rename a task inline** from the Board, Today, and Week views (click the title).
+
 ## [0.1.20] — 2026-06-16
 ### Added
 - **Duplicate detection.** Adding a task that semantically matches an existing one (open or done)
