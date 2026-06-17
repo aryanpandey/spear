@@ -11,6 +11,7 @@ import {
   type TodayItem,
   type TodayLane,
 } from "../api";
+import { EditableTitle } from "./EditableTitle";
 
 const PRIORITIES: Priority[] = ["critical", "high", "medium", "low"];
 
@@ -130,7 +131,6 @@ const PHASE_KINDS = ["planning", "design", "implementation", "testing", "stage_t
 
 function Item({ item, onChange }: { item: TodayItem; onChange: () => void }) {
   const isPhase = PHASE_KINDS.includes(item.stage.kind);
-  const title = isPhase ? `${item.task.title} · ${item.stage.name}` : item.stage.name;
   // Actions operate on the whole task (a Today item is one of its stages).
   const run = (fn: () => Promise<void>) => async () => {
     try {
@@ -150,11 +150,25 @@ function Item({ item, onChange }: { item: TodayItem; onChange: () => void }) {
         {item.is_delegation_candidate && <span className="badge delegate">⇄ delegate</span>}
       </div>
       <div className="title" style={{ marginTop: 4 }}>
-        {title} <span className="kind">· {item.stage.kind}</span>
+        {isPhase ? (
+          <>
+            <EditableTitle id={item.task.id} title={item.task.title} onChange={onChange} /> · {item.stage.name}
+          </>
+        ) : (
+          item.stage.name
+        )}{" "}
+        <span className="kind">· {item.stage.kind}</span>
       </div>
       <div className="muted" style={{ fontSize: 11 }}>
         #{item.task.id}
-        {isPhase ? "" : ` ${item.task.title}`}
+        {isPhase ? (
+          ""
+        ) : (
+          <>
+            {" "}
+            <EditableTitle id={item.task.id} title={item.task.title} onChange={onChange} />
+          </>
+        )}
       </div>
       {item.rationale && <div className="why">{item.rationale}</div>}
       <div className="task-actions">
