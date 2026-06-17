@@ -3,6 +3,11 @@
 All notable changes to spear. Format loosely follows [Keep a Changelog](https://keepachangelog.com);
 versions are the `vX.Y.Z` git tags that trigger a dmg/exe release.
 
+## [0.1.26] — 2026-06-17
+### Added
+- **Light and friendly-dark themes** alongside the default Matrix theme — switch from the header; the
+  choice is saved to `~/.spear/config.json` (synced across CLI/desktop/browser) and applies to all tabs.
+
 ## [0.1.25] — 2026-06-17
 ### Changed
 - **Renaming a task is now a card-name edit on the Today flow.** The card's prominent name is the
