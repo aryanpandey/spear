@@ -1,5 +1,6 @@
 import type { BoardData, BoardTask, TaskStatus } from "../api";
 import { setTaskStatus, completeTask, deleteTask } from "../api";
+import { EditableTitle } from "./EditableTitle";
 
 const COLUMNS: { status: TaskStatus; label: string }[] = [
   { status: "backlog", label: "Backlog" },
@@ -25,7 +26,7 @@ function TaskCard({ task, onChange }: { task: BoardTask; onChange: () => void })
         <span className="kind">{task.type}</span>
       </div>
       <div className="title" style={{ marginTop: 4 }}>
-        <span className="muted">#{task.id}</span> {task.title}
+        <span className="muted">#{task.id}</span> <EditableTitle id={task.id} title={task.title} onChange={onChange} />
       </div>
       {task.stages.length > 1 && (
         <div className="dots" title={task.stages.map((s) => `${s.name}: ${s.status}`).join("\n")}>
