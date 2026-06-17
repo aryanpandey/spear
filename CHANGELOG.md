@@ -3,6 +3,14 @@
 All notable changes to spear. Format loosely follows [Keep a Changelog](https://keepachangelog.com);
 versions are the `vX.Y.Z` git tags that trigger a dmg/exe release.
 
+## [0.1.22] — 2026-06-17
+### Fixed
+- **Image paste no longer 413s.** The server body limit is raised to 32 MB so a pasted screenshot
+  (base64-encoded in the request) is accepted (Fastify defaulted to 1 MB).
+### Changed
+- The add bar's pasted-image thumbnail now sits to the **left** of the textbox, and the textbox is an
+  auto-growing textarea that expands as you type multiple lines (Enter submits, Shift+Enter for a newline).
+
 ## [0.1.21] — 2026-06-17
 ### Added
 - **Confirm-and-edit before creating** — when a capture is uncertain (an image was used, 2+ tasks were
