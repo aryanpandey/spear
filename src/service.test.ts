@@ -208,4 +208,22 @@ describe("setTaskTitle", () => {
     expect(() => setTaskTitle(store, t.id, "   ")).toThrow();
     expect(store.getTask(t.id)!.title).toBe("keep");
   });
+
+  it("syncs a lone generic stage's name to the new title", () => {
+    const t = addTask(store, { title: "old name" }).task; // one generic stage named "old name"
+    setTaskTitle(store, t.id, "renamed");
+    expect(store.getStages(t.id)[0].name).toBe("renamed");
+  });
+
+  it("does not rename the stages of a multi-stage task", () => {
+    const t = addTask(store, {
+      title: "feat",
+      stages: [
+        { name: "Plan", kind: "planning" },
+        { name: "Impl", kind: "implementation" },
+      ],
+    }).task;
+    setTaskTitle(store, t.id, "renamed feat");
+    expect(store.getStages(t.id).map((s) => s.name)).toEqual(["Plan", "Impl"]);
+  });
 });

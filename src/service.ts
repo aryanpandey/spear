@@ -147,12 +147,15 @@ export function setTaskPriority(store: Store, taskId: number, priority: Priority
   return store.getTask(taskId)!;
 }
 
-/** Rename a task. Trims; rejects an empty title. */
+/** Rename a task. Trims; rejects an empty title. Keeps a lone generic stage's name in sync. */
 export function setTaskTitle(store: Store, taskId: number, title: string): Task {
   if (!store.getTask(taskId)) throw new Error(`task ${taskId} not found`);
   const t = title.trim();
   if (!t) throw new Error("title cannot be empty");
   store.updateTask(taskId, { title: t });
+  // A single generic stage IS the task's work, so keep its name equal to the title.
+  const stages = store.getStages(taskId);
+  if (stages.length === 1 && stages[0].kind === "generic") store.updateStage(stages[0].id, { name: t });
   return store.getTask(taskId)!;
 }
 

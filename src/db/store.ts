@@ -245,6 +245,23 @@ export class Store {
     return out;
   }
 
+  /**
+   * One-off cleanup: for every task with a single generic stage, set that stage's
+   * name to the task title (they represent the same work; renames can diverge them).
+   * Idempotent; returns the number of stages fixed.
+   */
+  syncSingleGenericStageNames(): number {
+    const info = this.db
+      .prepare(
+        `UPDATE stages SET name = (SELECT title FROM tasks WHERE tasks.id = stages.task_id)
+         WHERE kind = 'generic'
+           AND task_id IN (SELECT task_id FROM stages GROUP BY task_id HAVING COUNT(*) = 1)
+           AND name <> (SELECT title FROM tasks WHERE tasks.id = stages.task_id)`,
+      )
+      .run();
+    return info.changes;
+  }
+
   updateStage(id: number, patch: Partial<Omit<Stage, "id" | "task_id">>): Stage | undefined {
     const current = this.getStage(id);
     if (!current) return undefined;

@@ -59,6 +59,7 @@ export interface TodayItem {
   suggestedDue: string | null;
   suggestedDueReason: string | null;
   dueBand: DueBand;
+  multiStage: boolean;
   task: { id: number; title: string; priority: Priority; type: TaskType; status: TaskStatus };
   stage: { id: number; name: string; kind: StageKind; status: StageStatus; effort: string | null };
 }

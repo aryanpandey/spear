@@ -92,3 +92,19 @@ describe("suggested due", () => {
     expect(store.getTask(t.id)!.suggested_due).toBeNull();
   });
 });
+
+describe("syncSingleGenericStageNames", () => {
+  it("renames a lone generic stage to its task title, leaving multi-stage tasks alone", () => {
+    const store = freshStore();
+    const single = store.createTask({ title: "Real Title" });
+    store.addStage({ task_id: single.id, name: "Stale Name", kind: "generic", seq: 0 });
+    const multi = store.createTask({ title: "Multi" });
+    store.addStage({ task_id: multi.id, name: "Plan", kind: "planning", seq: 0 });
+    store.addStage({ task_id: multi.id, name: "Impl", kind: "implementation", seq: 1 });
+
+    const n = store.syncSingleGenericStageNames();
+    expect(n).toBe(1);
+    expect(store.getStages(single.id)[0].name).toBe("Real Title");
+    expect(store.getStages(multi.id).map((s) => s.name)).toEqual(["Plan", "Impl"]);
+  });
+});

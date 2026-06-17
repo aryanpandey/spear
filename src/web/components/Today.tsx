@@ -125,13 +125,16 @@ function PriorityEditor({ item, onChange }: { item: TodayItem; onChange: () => v
   );
 }
 
-// Generic phase stages ("Planning", "Implementation", "Testing", "Stage
-// Testing") are indistinguishable across tasks, so lead the title with the task
-// name. Custom-named stages are already descriptive and stand on their own.
+// The editable task title is always the card's name. Phase stages ("Planning"/…)
+// and the current step of a multi-stage task show as a small label after it; a lone
+// generic stage just mirrors the title, so it isn't shown separately.
 const PHASE_KINDS = ["planning", "design", "implementation", "testing", "stage_testing"];
 
 function Item({ item, onChange }: { item: TodayItem; onChange: () => void }) {
   const isPhase = PHASE_KINDS.includes(item.stage.kind);
+  // Show the stage name (a phase label, or a sub-step of a multi-stage task) only
+  // when it adds info beyond the task title; a lone generic stage just mirrors it.
+  const showStage = isPhase || item.multiStage;
   // Actions operate on the whole task (a Today item is one of its stages).
   const run = (fn: () => Promise<void>) => async () => {
     try {
@@ -151,26 +154,10 @@ function Item({ item, onChange }: { item: TodayItem; onChange: () => void }) {
         {item.is_delegation_candidate && <span className="badge delegate">⇄ delegate</span>}
       </div>
       <div className="title" style={{ marginTop: 4 }}>
-        {isPhase ? (
-          <>
-            <EditableTitle id={item.task.id} title={item.task.title} onChange={onChange} /> · {item.stage.name}
-          </>
-        ) : (
-          item.stage.name
-        )}{" "}
-        <span className="kind">· {item.stage.kind}</span>
+        <EditableTitle id={item.task.id} title={item.task.title} onChange={onChange} />
+        {showStage ? <> · {item.stage.name}</> : null} <span className="kind">· {item.stage.kind}</span>
       </div>
-      <div className="muted" style={{ fontSize: 11 }}>
-        #{item.task.id}
-        {isPhase ? (
-          ""
-        ) : (
-          <>
-            {" "}
-            <EditableTitle id={item.task.id} title={item.task.title} onChange={onChange} />
-          </>
-        )}
-      </div>
+      <div className="muted" style={{ fontSize: 11 }}>#{item.task.id}</div>
       {item.rationale && <div className="why">{item.rationale}</div>}
       <div className="task-actions">
         {item.task.status !== "in_progress" && (
