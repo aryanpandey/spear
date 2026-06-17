@@ -1,6 +1,27 @@
 import { useState, type DragEvent } from "react";
 import { setTaskDue, type BoardData, type BoardTask } from "../api";
 import { buildWeek } from "../../util/week";
+import { EditableTitle } from "./EditableTitle";
+
+/** A draggable Week chip with inline rename. Module-level so editing survives SSE refreshes. */
+function CalChip({ task, onChange }: { task: BoardTask; onChange: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const drag = editing
+    ? {}
+    : {
+        draggable: true,
+        onDragStart: (e: DragEvent) => {
+          e.dataTransfer.setData("text/plain", String(task.id));
+          e.dataTransfer.effectAllowed = "move";
+        },
+      };
+  return (
+    <div className={`cal-chip pri-${task.priority}${task.status === "done" ? " done" : ""}`} title={task.title} {...drag}>
+      <span className="muted">#{task.id}</span>{" "}
+      <EditableTitle id={task.id} title={task.title} onChange={onChange} onEditingChange={setEditing} />
+    </div>
+  );
+}
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 function fmtRange(start: string, end: string): string {
@@ -25,13 +46,6 @@ export function Calendar({ data, onChange }: { data: BoardData; onChange: () => 
     }
   };
 
-  const dragProps = (task: BoardTask) => ({
-    draggable: true,
-    onDragStart: (e: DragEvent) => {
-      e.dataTransfer.setData("text/plain", String(task.id));
-      e.dataTransfer.effectAllowed = "move";
-    },
-  });
   const dropProps = (key: string, due: string | null) => ({
     onDragOver: (e: DragEvent) => {
       e.preventDefault();
@@ -47,16 +61,6 @@ export function Calendar({ data, onChange }: { data: BoardData; onChange: () => 
     },
   });
 
-  const Card = ({ task }: { task: BoardTask }) => (
-    <div
-      className={`cal-chip pri-${task.priority}${task.status === "done" ? " done" : ""}`}
-      title={task.title}
-      {...dragProps(task)}
-    >
-      <span className="muted">#{task.id}</span> {task.title}
-    </div>
-  );
-
   return (
     <div className="week">
       <div className="week-head">
@@ -69,7 +73,7 @@ export function Calendar({ data, onChange }: { data: BoardData; onChange: () => 
           <div className="week-strip-head">⌛ Overdue ({week.overdue.length})</div>
           <div className="week-strip-body">
             {week.overdue.map((t) => (
-              <Card key={t.id} task={t} />
+              <CalChip key={t.id} task={t} onChange={onChange} />
             ))}
           </div>
         </div>
@@ -87,7 +91,7 @@ export function Calendar({ data, onChange }: { data: BoardData; onChange: () => 
               {d.isToday ? " ⋆" : ""}
             </div>
             {d.tasks.map((t) => (
-              <Card key={t.id} task={t} />
+              <CalChip key={t.id} task={t} onChange={onChange} />
             ))}
             {d.tasks.length === 0 && <div className="muted week-empty">—</div>}
           </div>
@@ -105,7 +109,7 @@ export function Calendar({ data, onChange }: { data: BoardData; onChange: () => 
         {showUnsched && (
           <div className="unsched-body">
             {week.unscheduled.map((t) => (
-              <Card key={t.id} task={t} />
+              <CalChip key={t.id} task={t} onChange={onChange} />
             ))}
             {week.unscheduled.length === 0 && <div className="muted">none</div>}
           </div>
