@@ -11,6 +11,7 @@ import { saveConfig } from "../config/index.js";
 import { intakeTasks, extractSeedsForIntake, createTasksFromSeeds, mimeExt, type IntakeParams } from "./intake.js";
 import { checkSeedsForDuplicates } from "./duplicateCheck.js";
 import type { TaskSeed } from "../llm/intake.js";
+import { coerceTheme, THEMES } from "../util/theme.js";
 import { addTask, advanceTask, completeTask, removeTask, setTaskDue, setTaskPriority, setTaskStatus, setTaskTitle } from "../service.js";
 import { breakdownForAdd } from "../breakdown/index.js";
 import { PRIORITIES, TASK_STATUSES, TASK_TYPES, type Priority, type TaskStatus, type TaskType } from "../types.js";
@@ -250,8 +251,19 @@ export function buildServer(store: Store, cfg: SpearConfig): SpearServer {
     }
   });
 
-  // ---- config (lane count) ----
-  app.get("/api/config", async () => ({ maxLanes: cfg.maxLanes }));
+  // ---- config (lane count + theme) ----
+  app.get("/api/config", async () => ({ maxLanes: cfg.maxLanes, theme: cfg.theme }));
+
+  app.post("/api/config/theme", async (req, reply) => {
+    const body = (req.body ?? {}) as { theme?: string };
+    if (!THEMES.includes(body.theme as never)) {
+      reply.code(400);
+      return { error: "invalid theme" };
+    }
+    cfg.theme = coerceTheme(body.theme);
+    saveConfig(cfg);
+    return { theme: cfg.theme };
+  });
 
   app.post("/api/config/lanes", async (req, reply) => {
     const body = (req.body ?? {}) as { lanes?: number };
