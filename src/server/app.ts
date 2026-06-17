@@ -11,7 +11,7 @@ import { saveConfig } from "../config/index.js";
 import { intakeTasks, extractSeedsForIntake, createTasksFromSeeds, mimeExt, type IntakeParams } from "./intake.js";
 import { checkSeedsForDuplicates } from "./duplicateCheck.js";
 import type { TaskSeed } from "../llm/intake.js";
-import { addTask, advanceTask, completeTask, removeTask, setTaskDue, setTaskPriority, setTaskStatus } from "../service.js";
+import { addTask, advanceTask, completeTask, removeTask, setTaskDue, setTaskPriority, setTaskStatus, setTaskTitle } from "../service.js";
 import { breakdownForAdd } from "../breakdown/index.js";
 import { PRIORITIES, TASK_STATUSES, TASK_TYPES, type Priority, type TaskStatus, type TaskType } from "../types.js";
 import { GOAL_STATUSES, type GoalStatus } from "../types.js";
@@ -300,6 +300,22 @@ export function buildServer(store: Store, cfg: SpearConfig): SpearServer {
     }
     const task = setTaskPriority(store, id, priority);
     hub.broadcast({ type: "update", source: "refresh" }); // priority change — no re-plan
+    return { task };
+  });
+
+  app.post<{ Params: { id: string }; Body: { title?: string } }>("/api/tasks/:id/title", async (req, reply) => {
+    const id = Number(req.params.id);
+    if (!store.getTask(id)) {
+      reply.code(404);
+      return { error: "not found" };
+    }
+    const title = typeof req.body?.title === "string" ? req.body.title : "";
+    if (!title.trim()) {
+      reply.code(400);
+      return { error: "title required" };
+    }
+    const task = setTaskTitle(store, id, title);
+    hub.broadcast({ type: "update", source: "refresh" }); // rename — no re-plan
     return { task };
   });
 

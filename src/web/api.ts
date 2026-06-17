@@ -207,6 +207,16 @@ export async function setTaskPriority(id: number, priority: Priority): Promise<v
   if (!r.ok) throw new Error(`priority ${r.status}`);
 }
 
+/** Rename a task; server refreshes (does not re-plan). */
+export async function setTaskTitle(id: number, title: string): Promise<void> {
+  const r = await fetch(`/api/tasks/${id}/title`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title }),
+  });
+  if (!r.ok) throw new Error(`title ${r.status}`);
+}
+
 /** Set (`YYYY-MM-DD`) or clear (`null`) a task's deadline; server re-plans. */
 export async function setTaskDue(id: number, due: string | null): Promise<void> {
   const r = await fetch(`/api/tasks/${id}/due`, {
