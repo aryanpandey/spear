@@ -3,6 +3,13 @@
 All notable changes to spear. Format loosely follows [Keep a Changelog](https://keepachangelog.com);
 versions are the `vX.Y.Z` git tags that trigger a dmg/exe release.
 
+## [0.1.25] — 2026-06-17
+### Changed
+- **Renaming a task is now a card-name edit on the Today flow.** The card's prominent name is the
+  editable task title (matching Board/Week); a lone generic stage's name (which just duplicated the
+  title) is no longer shown as a separate name. Renaming keeps a single generic stage's name in sync,
+  and a one-off backfill fixes tasks whose title and stage name had already diverged.
+
 ## [0.1.24] — 2026-06-17
 ### Added
 - **Replan dates.** A "⟳ replan dates" button on the Today flow re-decides every task's completion date
