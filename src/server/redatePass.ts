@@ -48,11 +48,11 @@ export async function redateCurrentPlan(
     } catch {
       assignments = []; // best-effort: a failed lane falls back to clamp/today below
     }
-    const byId = new Map(assignments.map((a) => [a.taskId, a.date]));
+    const byId = new Map<number, string>(assignments.map((a) => [a.taskId, a.date]));
 
     let prev: string | null = null;
     for (const t of lane.tasks) {
-      let date = byId.get(t.task_id) ?? prev ?? today;
+      let date: string = byId.get(t.task_id) ?? prev ?? today;
       if (prev) {
         const a = parseDateLocal(date);
         const b = parseDateLocal(prev);
