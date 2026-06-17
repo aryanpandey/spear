@@ -147,6 +147,15 @@ export function setTaskPriority(store: Store, taskId: number, priority: Priority
   return store.getTask(taskId)!;
 }
 
+/** Rename a task. Trims; rejects an empty title. */
+export function setTaskTitle(store: Store, taskId: number, title: string): Task {
+  if (!store.getTask(taskId)) throw new Error(`task ${taskId} not found`);
+  const t = title.trim();
+  if (!t) throw new Error("title cannot be empty");
+  store.updateTask(taskId, { title: t });
+  return store.getTask(taskId)!;
+}
+
 /** Set a task's status explicitly. */
 export function setTaskStatus(store: Store, taskId: number, status: TaskStatus): Task {
   if (!store.getTask(taskId)) throw new Error(`task ${taskId} not found`);

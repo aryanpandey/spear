@@ -14,6 +14,7 @@ import {
   setTaskDue,
   setTaskPriority,
   setTaskStatus,
+  setTaskTitle,
   unblockTask,
 } from "./service.js";
 
@@ -188,5 +189,23 @@ describe("service.setTaskPriority", () => {
 
   it("throws on an unknown task", () => {
     expect(() => setTaskPriority(store, 9999, "high")).toThrow();
+  });
+});
+
+describe("setTaskTitle", () => {
+  let store: Store;
+  beforeEach(() => (store = freshStore()));
+
+  it("renames a task (trimmed)", () => {
+    const t = addTask(store, { title: "old name" }).task;
+    const updated = setTaskTitle(store, t.id, "  new name  ");
+    expect(updated.title).toBe("new name");
+    expect(store.getTask(t.id)!.title).toBe("new name");
+  });
+
+  it("rejects an empty / whitespace title", () => {
+    const t = addTask(store, { title: "keep" }).task;
+    expect(() => setTaskTitle(store, t.id, "   ")).toThrow();
+    expect(store.getTask(t.id)!.title).toBe("keep");
   });
 });
