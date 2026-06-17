@@ -80,3 +80,15 @@ export const DuplicateSchema = z.object({
   ),
 });
 export type DuplicateOutput = z.infer<typeof DuplicateSchema>;
+
+// ---- Replan dates (per lane) ----
+
+export const ReplanDatesSchema = z.object({
+  dates: z.array(
+    z.object({
+      task_id: z.number().int(),
+      date: z.string().describe("YYYY-MM-DD, today or later"),
+    }),
+  ),
+});
+export type ReplanDatesOutput = z.infer<typeof ReplanDatesSchema>;
