@@ -774,3 +774,46 @@ main { padding: 18px 20px 40px; flex: 1; }
   font: inherit;
   min-width: 12ch;
 }
+
+/* ---- v0.1.24: replan-dates button + determinate progress bar ---- */
+.narrative .head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.redate-btn {
+  background: transparent;
+  color: var(--green, #00ff41);
+  border: 1px solid var(--green, #00ff41);
+  border-radius: 3px;
+  font: inherit;
+  font-size: 11px;
+  padding: 2px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.redate-btn:hover:not(:disabled) { background: var(--green, #00ff41); color: var(--bg, #060a06); box-shadow: var(--glow); }
+.redate-btn:disabled { opacity: 0.5; cursor: default; }
+.redate-progress {
+  position: relative;
+  height: 16px;
+  margin: 6px 0;
+  border: 1px solid var(--green, #00ff41);
+  border-radius: 3px;
+  background: rgba(0, 255, 65, 0.08);
+  overflow: hidden;
+}
+.redate-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  background: var(--green, #00ff41);
+  opacity: 0.35;
+  transition: width 0.3s ease;
+}
+.redate-label {
+  position: relative;
+  z-index: 1;
+  display: block;
+  line-height: 16px;
+  font-size: 11px;
+  text-align: center;
+  color: var(--green, #00ff41);
+}

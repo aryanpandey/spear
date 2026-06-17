@@ -5,6 +5,7 @@ import {
   deleteTask,
   setTaskDue,
   setTaskPriority,
+  replanDates,
   type Priority,
   type ScheduledState,
   type TodayData,
@@ -213,17 +214,42 @@ function Lane({ lane, number, onChange }: { lane: TodayLane; number: number; onC
   );
 }
 
-export function Today({ data, onChange }: { data: TodayData; onChange: () => void }) {
+export function Today({
+  data,
+  onChange,
+  redate,
+}: {
+  data: TodayData;
+  onChange: () => void;
+  redate?: { done: number; total: number } | null;
+}) {
   if (!data.plan) {
     return <div className="empty">No current plan. Run <code>spear plan</code> to generate today's execution flow.</div>;
   }
+  const pct = redate && redate.total ? Math.round((redate.done / redate.total) * 100) : 0;
   return (
     <div>
       <div className="narrative">
         <div className="head">
-          ░ Execution Flow — {data.plan.plan_date} · {data.plan.trigger} ·{" "}
-          {data.plan.model ? "llm" : "deterministic"}
+          <span>
+            ░ Execution Flow — {data.plan.plan_date} · {data.plan.trigger} ·{" "}
+            {data.plan.model ? "llm" : "deterministic"}
+          </span>
+          <button
+            className="redate-btn"
+            disabled={!!redate}
+            title="Re-decide every task's completion date from the current lane order (keeps lane order)"
+            onClick={() => void replanDates()}
+          >
+            ⟳ replan dates
+          </button>
         </div>
+        {redate && (
+          <div className="redate-progress" title="re-deciding completion dates">
+            <div className="redate-fill" style={{ width: `${pct}%` }} />
+            <span className="redate-label">re-dating lanes… {redate.done}/{redate.total} ({pct}%)</span>
+          </div>
+        )}
         {data.plan.narrative}
       </div>
       {data.lanes.length === 0 ? (
