@@ -3,6 +3,17 @@
 All notable changes to spear. Format loosely follows [Keep a Changelog](https://keepachangelog.com);
 versions are the `vX.Y.Z` git tags that trigger a dmg/exe release.
 
+## [0.1.24] — 2026-06-17
+### Added
+- **Replan dates.** A "⟳ replan dates" button on the Today flow re-decides every task's completion date
+  from the current lane order (without changing the order), assuming ~2 tasks per lane per day, via one
+  LLM call per lane with a live percentage progress bar. Within-lane dates are clamped non-decreasing.
+  It also runs automatically after a lane-count change. New `models.dates` / `effort.dates` config keys.
+- **Drag-and-drop an image** onto the add-task box (in addition to pasting).
+### Changed
+- The add-task progress bar is now a **determinate percentage fill** (fills left→right with the
+  capture's completion) instead of an animated sweeping light.
+
 ## [0.1.23] — 2026-06-17
 ### Added
 - **Green progress bar across the add box** while a capture is generating and being assigned — it's on

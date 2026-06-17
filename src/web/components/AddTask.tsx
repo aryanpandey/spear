@@ -13,7 +13,8 @@ interface Row {
 /**
  * Inline capture for the Today tab. After /intake/check, an uncertain capture
  * (image used, 2+ tasks, or a flagged duplicate) opens an editable confirm popup;
- * a single typed task with no duplicate is created immediately.
+ * a single typed task with no duplicate is created immediately. A determinate
+ * progress bar fills through the capture's milestones (extract → create → re-plan).
  */
 export function AddTask({ onAdded, replanning = false }: { onAdded: () => void; replanning?: boolean }) {
   const [title, setTitle] = useState("");
@@ -23,6 +24,8 @@ export function AddTask({ onAdded, replanning = false }: { onAdded: () => void; 
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [rows, setRows] = useState<Row[] | null>(null); // confirm popup open when non-null
+  const [progress, setProgress] = useState(0); // 0 = bar hidden; otherwise % complete
+  const [dragOver, setDragOver] = useState(false);
   const taRef = useRef<HTMLTextAreaElement>(null);
 
   // Grow the textbox to fit its content (and shrink back when cleared).
@@ -33,15 +36,50 @@ export function AddTask({ onAdded, replanning = false }: { onAdded: () => void; 
     el.style.height = `${el.scrollHeight}px`;
   }, [title]);
 
-  function onPaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
-    const item = Array.from(e.clipboardData.items).find((i) => i.type.startsWith("image/"));
-    if (!item) return;
-    const file = item.getAsFile();
-    if (!file) return;
-    e.preventDefault();
+  // Assignment (re-plan) phase: creep the bar toward 95% while re-planning, then
+  // snap to 100% and hide when it finishes — but only if an add is mid-flight
+  // (progress already advanced past 0), so an unrelated re-plan doesn't show it.
+  useEffect(() => {
+    if (replanning) {
+      const id = window.setInterval(() => setProgress((p) => (p > 0 && p < 95 ? p + 1 : p)), 700);
+      return () => window.clearInterval(id);
+    }
+    let t: number | undefined;
+    setProgress((p) => {
+      if (p > 0) {
+        t = window.setTimeout(() => setProgress(0), 500);
+        return 100;
+      }
+      return p;
+    });
+    return () => window.clearTimeout(t);
+  }, [replanning]);
+
+  function readImage(file: File) {
     const reader = new FileReader();
     reader.onload = () => setImage(typeof reader.result === "string" ? reader.result : null);
     reader.readAsDataURL(file);
+  }
+
+  function onPaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const item = Array.from(e.clipboardData.items).find((i) => i.type.startsWith("image/"));
+    const file = item?.getAsFile();
+    if (!file) return;
+    e.preventDefault();
+    readImage(file);
+  }
+
+  function onDragOver(e: React.DragEvent) {
+    if (Array.from(e.dataTransfer.items).some((i) => i.kind === "file")) {
+      e.preventDefault(); // allow the drop
+      setDragOver(true);
+    }
+  }
+  function onDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOver(false);
+    const file = Array.from(e.dataTransfer.files).find((f) => f.type.startsWith("image/"));
+    if (file) readImage(file);
   }
 
   function reset() {
@@ -52,6 +90,7 @@ export function AddTask({ onAdded, replanning = false }: { onAdded: () => void; 
 
   async function create(seeds: TaskSeed[]) {
     await createTasksFromSeeds(seeds, intent === "auto" ? undefined : intent, priority === "auto" ? undefined : priority);
+    setProgress(75); // tasks created; the re-plan creep takes it the rest of the way
     reset();
     onAdded();
   }
@@ -62,15 +101,19 @@ export function AddTask({ onAdded, replanning = false }: { onAdded: () => void; 
     if ((!t && !image) || busy) return;
     setBusy(true);
     setErr(null);
+    setProgress(10);
     try {
       const imageUsed = !!image;
       const { seeds, duplicates } = await checkIntake({ prompt: t, imageDataUrl: image ?? undefined });
       if (needsConfirm({ imageUsed, seedCount: seeds.length, duplicateCount: duplicates.length })) {
+        setProgress(0); // hand off to the user; nothing is running
         setRows(seeds.map((s, i) => ({ title: s.title, details: s.details, dup: duplicates.find((d) => d.seedIndex === i) ?? null })));
       } else {
+        setProgress(50); // extraction done
         await create(seeds);
       }
     } catch (e) {
+      setProgress(0);
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
@@ -88,9 +131,11 @@ export function AddTask({ onAdded, replanning = false }: { onAdded: () => void; 
     if (!rows) return;
     setBusy(true);
     setErr(null);
+    setProgress(50);
     try {
       await create(rows.map((r) => ({ title: r.title.trim(), details: r.details })));
     } catch (e) {
+      setProgress(0);
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
@@ -100,12 +145,22 @@ export function AddTask({ onAdded, replanning = false }: { onAdded: () => void; 
   const canCreate = !!rows && rows.length > 0 && rows.every((r) => r.title.trim());
 
   return (
-    <form className="add-task" onSubmit={submit}>
-      {(busy || replanning) && <div className="add-task-progress" title="generating + assigning tasks…" />}
+    <form
+      className={`add-task${dragOver ? " drag-over" : ""}`}
+      onSubmit={submit}
+      onDragOver={onDragOver}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={onDrop}
+    >
+      {progress > 0 && (
+        <div className="add-task-progress" title={`working… ${Math.round(progress)}%`}>
+          <div className="add-task-fill" style={{ width: `${progress}%` }} />
+        </div>
+      )}
       <span className="add-task-caret">▸</span>
       {image && (
-        <span className="add-task-img" title="pasted image — will be read to extract tasks">
-          <img src={image} alt="pasted" />
+        <span className="add-task-img" title="image — will be read to extract tasks">
+          <img src={image} alt="attached" />
           <button type="button" className="add-task-img-x" title="remove image" onClick={() => setImage(null)}>
             ✕
           </button>
@@ -115,7 +170,7 @@ export function AddTask({ onAdded, replanning = false }: { onAdded: () => void; 
         ref={taRef}
         className="add-task-input"
         rows={1}
-        placeholder="add task(s) — describe in plain English or paste an image; it gets split into flows"
+        placeholder="add task(s) — type, paste, or drag an image; it gets split into flows"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         onPaste={onPaste}

@@ -180,23 +180,28 @@ main { padding: 18px 20px 40px; flex: 1; }
   background: var(--panel);
   padding: 6px 10px;
 }
-/* Green progress bar spanning the add box while a capture is generating + being
-   assigned into the plan (on from Add through the re-plan). */
+/* Determinate progress: a green bar that FILLS left→right with the capture's
+   completion (extract → create → re-plan), not a sweeping light. */
 .add-task-progress {
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  height: 4px;
+  height: 5px;
   z-index: 5;
   pointer-events: none;
-  background: linear-gradient(90deg, transparent 0%, var(--green) 50%, transparent 100%);
-  background-size: 35% 100%;
-  background-repeat: no-repeat;
+  overflow: hidden;
+  background: rgba(0, 255, 65, 0.12);
+}
+.add-task-fill {
+  height: 100%;
+  width: 0;
+  background: var(--green);
   box-shadow: 0 0 8px rgba(0, 255, 65, 0.7);
-  animation: replan-sweep 1s linear infinite;
+  transition: width 0.4s ease;
 }
 .add-task:has(.add-task-progress) { border-color: var(--green); box-shadow: var(--glow); }
+.add-task.drag-over { border-color: var(--green); box-shadow: var(--glow); background: rgba(0, 255, 65, 0.06); }
 .add-task:focus-within { border-color: var(--green); box-shadow: var(--glow); }
 .add-task-caret { color: var(--green); }
 .add-task-input {
