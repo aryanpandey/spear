@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { checkIntake, createTasksFromSeeds, type DuplicateMatch, type Intent, type Priority, type TaskSeed } from "../api";
 import { needsConfirm } from "../../util/needsConfirm";
 
@@ -23,8 +23,17 @@ export function AddTask({ onAdded }: { onAdded: () => void }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [rows, setRows] = useState<Row[] | null>(null); // confirm popup open when non-null
+  const taRef = useRef<HTMLTextAreaElement>(null);
 
-  function onPaste(e: React.ClipboardEvent<HTMLInputElement>) {
+  // Grow the textbox to fit its content (and shrink back when cleared).
+  useEffect(() => {
+    const el = taRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [title]);
+
+  function onPaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
     const item = Array.from(e.clipboardData.items).find((i) => i.type.startsWith("image/"));
     if (!item) return;
     const file = item.getAsFile();
@@ -93,14 +102,6 @@ export function AddTask({ onAdded }: { onAdded: () => void }) {
   return (
     <form className="add-task" onSubmit={submit}>
       <span className="add-task-caret">▸</span>
-      <input
-        className="add-task-input"
-        placeholder="add task(s) — describe in plain English or paste an image; it gets split into flows"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        onPaste={onPaste}
-        disabled={busy}
-      />
       {image && (
         <span className="add-task-img" title="pasted image — will be read to extract tasks">
           <img src={image} alt="pasted" />
@@ -109,6 +110,23 @@ export function AddTask({ onAdded }: { onAdded: () => void }) {
           </button>
         </span>
       )}
+      <textarea
+        ref={taRef}
+        className="add-task-input"
+        rows={1}
+        placeholder="add task(s) — describe in plain English or paste an image; it gets split into flows"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        onPaste={onPaste}
+        onKeyDown={(e) => {
+          // Enter submits; Shift+Enter inserts a newline (the box grows).
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            e.currentTarget.form?.requestSubmit();
+          }
+        }}
+        disabled={busy}
+      />
       <select
         className="add-task-pri"
         value={intent}

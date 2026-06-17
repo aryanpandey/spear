@@ -171,7 +171,8 @@ main { padding: 18px 20px 40px; flex: 1; }
 /* ---- add task (Today tab) ---- */
 .add-task {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 16px;
   border: 1px solid var(--border);
@@ -182,12 +183,17 @@ main { padding: 18px 20px 40px; flex: 1; }
 .add-task-caret { color: var(--green); }
 .add-task-input {
   flex: 1;
+  min-width: 12ch;
   background: transparent;
   border: none;
   color: var(--text);
   font-family: var(--mono);
   font-size: 13px;
   padding: 4px 2px;
+  line-height: 1.4;
+  resize: none;
+  overflow: hidden;
+  min-height: 22px;
 }
 .add-task-input:focus { outline: none; }
 .add-task-input::placeholder { color: var(--text-dim); }

@@ -33,7 +33,9 @@ export interface SpearServer {
 }
 
 export function buildServer(store: Store, cfg: SpearConfig): SpearServer {
-  const app = Fastify({ logger: false });
+  // 32 MB body limit so a pasted screenshot (base64-encoded in the JSON body)
+  // isn't rejected with 413; Fastify defaults to only 1 MB.
+  const app = Fastify({ logger: false, bodyLimit: 32 * 1024 * 1024 });
   const hub = createSseHub();
   const replanner = new Replanner(store, hub, cfg);
 
