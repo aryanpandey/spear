@@ -710,3 +710,43 @@ main { padding: 18px 20px 40px; flex: 1; }
 .dup-status { color: var(--dim, #6f9f7f); }
 .dup-warn-actions { display: flex; gap: 8px; }
 .dup-cancel { background: none; border: 1px solid var(--dim, #6f9f7f); color: var(--dim, #6f9f7f); border-radius: 3px; padding: 2px 10px; cursor: pointer; }
+
+/* ---- v0.1.21: extraction confirm popup + inline title edit ---- */
+.confirm-extract {
+  flex-basis: 100%;
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid var(--green, #00ff41);
+  border-radius: 4px;
+  background: rgba(0, 255, 65, 0.05);
+  font-size: 12px;
+}
+.confirm-head { color: var(--green, #00ff41); margin-bottom: 8px; }
+.confirm-row { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 8px; }
+.confirm-fields { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.confirm-title, .confirm-details {
+  width: 100%;
+  background: #0a0e0a;
+  color: var(--fg, #cfe8d4);
+  border: 1px solid #1c3a24;
+  border-radius: 3px;
+  padding: 4px 6px;
+  font: inherit;
+}
+.confirm-title { font-weight: 600; }
+.confirm-details { resize: vertical; }
+.confirm-dup { color: var(--warn, #e0b341); }
+.confirm-remove { background: none; border: none; color: var(--crit, #ff5577); cursor: pointer; font-size: 13px; padding: 2px 4px; }
+.confirm-actions { display: flex; gap: 8px; margin-top: 4px; }
+
+.title-edit { cursor: text; border-bottom: 1px dashed transparent; }
+.title-edit:hover { border-bottom-color: var(--dim, #6f9f7f); }
+.title-edit-input {
+  background: #0a0e0a;
+  color: var(--fg, #cfe8d4);
+  border: 1px solid var(--green, #00ff41);
+  border-radius: 3px;
+  padding: 1px 4px;
+  font: inherit;
+  min-width: 12ch;
+}

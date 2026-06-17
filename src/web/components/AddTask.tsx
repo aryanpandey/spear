@@ -1,12 +1,19 @@
 import { useState } from "react";
 import { checkIntake, createTasksFromSeeds, type DuplicateMatch, type Intent, type Priority, type TaskSeed } from "../api";
+import { needsConfirm } from "../../util/needsConfirm";
 
 const PRIORITIES: Priority[] = ["critical", "high", "medium", "low"];
 
+interface Row {
+  title: string;
+  details: string;
+  dup: DuplicateMatch | null;
+}
+
 /**
- * Inline capture for the Today tab. Two-step: /intake/check extracts the task(s)
- * and flags any that duplicate an existing task; if there are duplicates we show a
- * warning with "Add anyway", otherwise we create immediately.
+ * Inline capture for the Today tab. After /intake/check, an uncertain capture
+ * (image used, 2+ tasks, or a flagged duplicate) opens an editable confirm popup;
+ * a single typed task with no duplicate is created immediately.
  */
 export function AddTask({ onAdded }: { onAdded: () => void }) {
   const [title, setTitle] = useState("");
@@ -15,7 +22,7 @@ export function AddTask({ onAdded }: { onAdded: () => void }) {
   const [image, setImage] = useState<string | null>(null); // data URL
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [pending, setPending] = useState<{ seeds: TaskSeed[]; duplicates: DuplicateMatch[] } | null>(null);
+  const [rows, setRows] = useState<Row[] | null>(null); // confirm popup open when non-null
 
   function onPaste(e: React.ClipboardEvent<HTMLInputElement>) {
     const item = Array.from(e.clipboardData.items).find((i) => i.type.startsWith("image/"));
@@ -31,7 +38,7 @@ export function AddTask({ onAdded }: { onAdded: () => void }) {
   function reset() {
     setTitle("");
     setImage(null);
-    setPending(null);
+    setRows(null);
   }
 
   async function create(seeds: TaskSeed[]) {
@@ -47,9 +54,10 @@ export function AddTask({ onAdded }: { onAdded: () => void }) {
     setBusy(true);
     setErr(null);
     try {
+      const imageUsed = !!image;
       const { seeds, duplicates } = await checkIntake({ prompt: t, imageDataUrl: image ?? undefined });
-      if (duplicates.length > 0) {
-        setPending({ seeds, duplicates });
+      if (needsConfirm({ imageUsed, seedCount: seeds.length, duplicateCount: duplicates.length })) {
+        setRows(seeds.map((s, i) => ({ title: s.title, details: s.details, dup: duplicates.find((d) => d.seedIndex === i) ?? null })));
       } else {
         await create(seeds);
       }
@@ -60,12 +68,19 @@ export function AddTask({ onAdded }: { onAdded: () => void }) {
     }
   }
 
-  async function addAnyway() {
-    if (!pending) return;
+  function patchRow(i: number, patch: Partial<Row>) {
+    setRows((rs) => (rs ? rs.map((r, idx) => (idx === i ? { ...r, ...patch } : r)) : rs));
+  }
+  function removeRow(i: number) {
+    setRows((rs) => (rs ? rs.filter((_, idx) => idx !== i) : rs));
+  }
+
+  async function createFromRows() {
+    if (!rows) return;
     setBusy(true);
     setErr(null);
     try {
-      await create(pending.seeds);
+      await create(rows.map((r) => ({ title: r.title.trim(), details: r.details })));
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
@@ -73,7 +88,7 @@ export function AddTask({ onAdded }: { onAdded: () => void }) {
     }
   }
 
-  const titleFor = (i: number) => pending?.seeds[i]?.title ?? "this task";
+  const canCreate = !!rows && rows.length > 0 && rows.every((r) => r.title.trim());
 
   return (
     <form className="add-task" onSubmit={submit}>
@@ -122,25 +137,43 @@ export function AddTask({ onAdded }: { onAdded: () => void }) {
       </button>
       {err && <span className="add-task-err">{err}</span>}
 
-      {pending && (
-        <div className="dup-warn">
-          <div className="dup-warn-head">⚠ possible duplicate{pending.duplicates.length > 1 ? "s" : ""}</div>
-          <ul className="dup-warn-list">
-            {pending.duplicates.map((d, i) => (
-              <li key={i}>
-                <span className="dup-new">“{titleFor(d.seedIndex)}”</span> looks like{" "}
-                <span className="dup-existing">
-                  #{d.taskId} “{d.title}” <span className="dup-status">({d.status})</span>
-                </span>{" "}
-                — {d.reason}
-              </li>
-            ))}
-          </ul>
-          <div className="dup-warn-actions">
-            <button type="button" className="add-task-btn" onClick={() => void addAnyway()} disabled={busy}>
-              {busy ? "…" : "Add anyway"}
+      {rows && (
+        <div className="confirm-extract">
+          <div className="confirm-head">
+            review {rows.length} task{rows.length === 1 ? "" : "s"} before adding — edit or remove any
+          </div>
+          {rows.map((r, i) => (
+            <div className="confirm-row" key={i}>
+              <div className="confirm-fields">
+                <input
+                  className="confirm-title"
+                  value={r.title}
+                  placeholder="task title"
+                  onChange={(e) => patchRow(i, { title: e.target.value })}
+                />
+                <textarea
+                  className="confirm-details"
+                  value={r.details}
+                  rows={2}
+                  placeholder="details (context for the breakdown)"
+                  onChange={(e) => patchRow(i, { details: e.target.value })}
+                />
+                {r.dup && (
+                  <div className="confirm-dup">
+                    ⚠ like #{r.dup.taskId} “{r.dup.title}” ({r.dup.status}) — {r.dup.reason}
+                  </div>
+                )}
+              </div>
+              <button type="button" className="confirm-remove" title="remove this task" onClick={() => removeRow(i)}>
+                ✕
+              </button>
+            </div>
+          ))}
+          <div className="confirm-actions">
+            <button type="button" className="add-task-btn" disabled={busy || !canCreate} onClick={() => void createFromRows()}>
+              {busy ? "…" : `Create ${rows.length} task${rows.length === 1 ? "" : "s"}`}
             </button>
-            <button type="button" className="dup-cancel" onClick={() => setPending(null)} disabled={busy}>
+            <button type="button" className="dup-cancel" onClick={() => setRows(null)} disabled={busy}>
               Cancel
             </button>
           </div>
