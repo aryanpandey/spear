@@ -188,6 +188,12 @@ export async function setMaxLanes(lanes: number): Promise<{ maxLanes: number }> 
   return r.json();
 }
 
+/** Re-decide completion dates on the current lanes (server runs per-lane LLM calls). */
+export async function replanDates(): Promise<void> {
+  const r = await fetch("/api/plan/replan-dates", { method: "POST" });
+  if (!r.ok) throw new Error(`replan-dates ${r.status}`);
+}
+
 export async function setTaskStatus(id: number, status: TaskStatus): Promise<void> {
   const r = await fetch(`/api/tasks/${id}/status`, {
     method: "POST",

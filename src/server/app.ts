@@ -262,8 +262,14 @@ export function buildServer(store: Store, cfg: SpearConfig): SpearServer {
     }
     cfg.maxLanes = n; // mutate the object the Replanner holds, so the next plan uses it
     saveConfig(cfg); // persist for next boot
-    replanner.requestReplan("manual"); // reorder everything into the new lane count
+    replanner.requestReplanThenRedate(); // reorder into the new lane count, then re-date
     return { maxLanes: n };
+  });
+
+  // ---- re-decide completion dates on the current lanes (no re-plan) ----
+  app.post("/api/plan/replan-dates", async () => {
+    replanner.requestRedate();
+    return { ok: true };
   });
 
   app.post<{ Params: { id: string } }>("/api/tasks/:id/advance", async (req) => {
