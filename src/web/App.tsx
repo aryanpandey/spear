@@ -7,7 +7,8 @@ import { Goals } from "./components/Goals";
 import { AddTask } from "./components/AddTask";
 import { DesktopButton } from "./components/DesktopButton";
 import { Logo } from "./components/Logo";
-import { fetchBoard, fetchToday, fetchConfig, setMaxLanes, type BoardData, type TodayData } from "./api";
+import { fetchBoard, fetchToday, fetchConfig, setMaxLanes, setTheme as persistTheme, type BoardData, type TodayData } from "./api";
+import { coerceTheme, THEMES, type Theme } from "../util/theme";
 
 type Tab = "today" | "board" | "week" | "goals";
 
@@ -21,6 +22,18 @@ export function App() {
   const [replanning, setReplanning] = useState(false);
   const [lanes, setLanes] = useState<number>(6);
   const [redate, setRedate] = useState<{ done: number; total: number } | null>(null);
+  const [theme, setTheme] = useState<Theme>(() => coerceTheme(localStorage.getItem("spear-theme")));
+
+  // Apply + cache the theme (config is the synced source of truth; localStorage avoids a flash).
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("spear-theme", theme);
+  }, [theme]);
+
+  const changeTheme = useCallback((t: Theme) => {
+    setTheme(t); // optimistic; applied by the effect
+    void persistTheme(t).catch(() => {});
+  }, []);
 
   const loadSeq = useRef(0);
   const load = useCallback(async () => {
@@ -63,7 +76,10 @@ export function App() {
   useEffect(() => {
     load();
     fetchConfig()
-      .then((c) => setLanes(c.maxLanes))
+      .then((c) => {
+        setLanes(c.maxLanes);
+        setTheme(coerceTheme(c.theme));
+      })
       .catch(() => {});
     const es = new EventSource("/events");
     let safetyTimer: number | undefined;
@@ -104,7 +120,7 @@ export function App() {
 
   return (
     <div className="app">
-      <Rain />
+      {theme === "matrix" && <Rain />}
       {replanning && <div className="replan-bar" title="Re-planning with Claude…" />}
       <header className="bar">
         <span className="brand">
@@ -125,6 +141,16 @@ export function App() {
             Goals
           </button>
         </div>
+        <label className="lanes-ctl" title="App theme">
+          theme
+          <select value={theme} onChange={(e) => changeTheme(e.target.value as Theme)}>
+            {THEMES.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+        </label>
         <label className="lanes-ctl" title="Max parallel lanes — changing this re-plans the board">
           lanes
           <select value={lanes} onChange={(e) => void changeLanes(Number(e.target.value))}>
