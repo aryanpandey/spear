@@ -20,6 +20,7 @@ export function App() {
   const [refreshing, setRefreshing] = useState(false);
   const [replanning, setReplanning] = useState(false);
   const [lanes, setLanes] = useState<number>(6);
+  const [redate, setRedate] = useState<{ done: number; total: number } | null>(null);
 
   const loadSeq = useRef(0);
   const load = useCallback(async () => {
@@ -83,6 +84,13 @@ export function App() {
       if (msg?.type === "replan" && msg.phase === "end") {
         window.clearTimeout(safetyTimer);
         setReplanning(false);
+      }
+      if (msg?.type === "redate") {
+        const m = msg as { phase?: string; done?: number; total?: number };
+        if (m.phase === "end") setRedate(null);
+        else setRedate({ done: m.done ?? 0, total: m.total ?? 0 });
+        load();
+        return;
       }
       load();
     };
@@ -154,7 +162,7 @@ export function App() {
         {tab === "today" && (
           <>
             <AddTask onAdded={load} replanning={replanning} />
-            {today && <Today data={today} onChange={load} />}
+            {today && <Today data={today} onChange={load} redate={redate} />}
           </>
         )}
         {tab === "board" && board && <Board data={board} onChange={load} />}
