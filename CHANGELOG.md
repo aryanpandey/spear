@@ -3,6 +3,13 @@
 All notable changes to spear. Format loosely follows [Keep a Changelog](https://keepachangelog.com);
 versions are the `vX.Y.Z` git tags that trigger a dmg/exe release.
 
+## [0.1.23] — 2026-06-17
+### Added
+- **Green progress bar across the add box** while a capture is generating and being assigned — it's on
+  from the moment you hit Add, through extraction / duplicate-check / breakdown, and through the re-plan,
+  so the whole ~generation+assignment window now has a visible indicator (the old bar only covered the
+  re-plan and sat as a thin line at the top of the window).
+
 ## [0.1.22] — 2026-06-17
 ### Fixed
 - **Image paste no longer 413s.** The server body limit is raised to 32 MB so a pasted screenshot

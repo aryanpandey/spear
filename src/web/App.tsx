@@ -153,7 +153,7 @@ export function App() {
       <main>
         {tab === "today" && (
           <>
-            <AddTask onAdded={load} />
+            <AddTask onAdded={load} replanning={replanning} />
             {today && <Today data={today} onChange={load} />}
           </>
         )}

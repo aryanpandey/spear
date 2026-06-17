@@ -15,7 +15,7 @@ interface Row {
  * (image used, 2+ tasks, or a flagged duplicate) opens an editable confirm popup;
  * a single typed task with no duplicate is created immediately.
  */
-export function AddTask({ onAdded }: { onAdded: () => void }) {
+export function AddTask({ onAdded, replanning = false }: { onAdded: () => void; replanning?: boolean }) {
   const [title, setTitle] = useState("");
   const [priority, setPriority] = useState<"auto" | Priority>("auto");
   const [intent, setIntent] = useState<"auto" | Intent>("auto");
@@ -101,6 +101,7 @@ export function AddTask({ onAdded }: { onAdded: () => void }) {
 
   return (
     <form className="add-task" onSubmit={submit}>
+      {(busy || replanning) && <div className="add-task-progress" title="generating + assigning tasks…" />}
       <span className="add-task-caret">▸</span>
       {image && (
         <span className="add-task-img" title="pasted image — will be read to extract tasks">

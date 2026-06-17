@@ -170,6 +170,7 @@ main { padding: 18px 20px 40px; flex: 1; }
 
 /* ---- add task (Today tab) ---- */
 .add-task {
+  position: relative;
   display: flex;
   align-items: flex-start;
   flex-wrap: wrap;
@@ -179,6 +180,23 @@ main { padding: 18px 20px 40px; flex: 1; }
   background: var(--panel);
   padding: 6px 10px;
 }
+/* Green progress bar spanning the add box while a capture is generating + being
+   assigned into the plan (on from Add through the re-plan). */
+.add-task-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  z-index: 5;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent 0%, var(--green) 50%, transparent 100%);
+  background-size: 35% 100%;
+  background-repeat: no-repeat;
+  box-shadow: 0 0 8px rgba(0, 255, 65, 0.7);
+  animation: replan-sweep 1s linear infinite;
+}
+.add-task:has(.add-task-progress) { border-color: var(--green); box-shadow: var(--glow); }
 .add-task:focus-within { border-color: var(--green); box-shadow: var(--glow); }
 .add-task-caret { color: var(--green); }
 .add-task-input {
