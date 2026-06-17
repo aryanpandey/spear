@@ -172,9 +172,20 @@ export async function createTasksFromSeeds(
   return r.json();
 }
 
-export async function fetchConfig(): Promise<{ maxLanes: number }> {
+export async function fetchConfig(): Promise<{ maxLanes: number; theme: string }> {
   const r = await fetch("/api/config");
   if (!r.ok) throw new Error(`config ${r.status}`);
+  return r.json();
+}
+
+/** Persist the UI theme to config (synced across clients). */
+export async function setTheme(theme: string): Promise<{ theme: string }> {
+  const r = await fetch("/api/config/theme", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ theme }),
+  });
+  if (!r.ok) throw new Error(`theme ${r.status}`);
   return r.json();
 }
 
