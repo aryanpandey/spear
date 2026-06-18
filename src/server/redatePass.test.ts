@@ -54,4 +54,24 @@ describe("redateCurrentPlan", () => {
     const run = async () => ({ dates: [] });
     expect(await redateCurrentPlan(store, DEFAULT_CONFIG, undefined, run)).toBe(0);
   });
+
+  it("dates higher-priority tasks earlier within a lane, regardless of plan order", async () => {
+    const store = makeStore();
+    const low = addTask(store, { title: "low", priority: "low", stages: [{ name: "s", kind: "generic" }] });
+    const high = addTask(store, { title: "high", priority: "critical", stages: [{ name: "s", kind: "generic" }] });
+    store.savePlan(
+      { plan_date: "2026-06-18", trigger: "manual", narrative: "", model: "m" },
+      [planItem(low.task.id, low.stages[0].id, 0, 0), planItem(high.task.id, high.stages[0].id, 0, 1)],
+    );
+    const planned: Record<number, string> = { [low.task.id]: "2026-06-22", [high.task.id]: "2026-06-19" };
+    const run = async (prompt: string) => ({
+      dates: Object.entries(planned)
+        .filter(([id]) => prompt.includes(`"task_id":${id}`))
+        .map(([id, date]) => ({ task_id: Number(id), date })),
+    });
+    await redateCurrentPlan(store, DEFAULT_CONFIG, undefined, run);
+    expect(store.getTask(high.task.id)!.due).toBe("2026-06-19"); // critical sorted first → its date
+    expect(store.getTask(low.task.id)!.due).toBe("2026-06-22"); // clamped ≥ the critical date
+    expect(store.getTask(high.task.id)!.due! <= store.getTask(low.task.id)!.due!).toBe(true);
+  });
 });

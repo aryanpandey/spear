@@ -24,6 +24,7 @@ const SYSTEM = `You assign a completion (due) date to each task in ONE lane of a
 Rules:
 - The operator finishes about 2 tasks per lane per day; a "large" task may take a full day on its own.
 - Keep the dates NON-DECREASING down the lane (a task later in the list never finishes before an earlier one).
+- The tasks are listed highest-priority first; give higher-priority tasks sooner (earlier or equal) dates.
 - Lanes run in parallel, so start this lane from today.
 - All dates are YYYY-MM-DD, today or later.
 

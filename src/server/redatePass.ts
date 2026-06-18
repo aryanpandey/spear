@@ -3,6 +3,7 @@ import type { SpearConfig } from "../config/index.js";
 import { todayLocal, parseDateLocal } from "../util/time.js";
 import { replanDatesForLane, type LaneForDating, type LaneTaskForDating } from "../llm/replanDates.js";
 import { claudeJson, type ClaudeRunner } from "../llm/cli.js";
+import { PRIORITY_RANK } from "../types.js";
 
 export type RedateProgress = (done: number, total: number) => void;
 
@@ -35,7 +36,11 @@ export async function redateCurrentPlan(
     laneMap.get(it.lane)!.push({ task_id: task.id, title: task.title, type: task.type, priority: task.priority, effort: task.effort });
   }
 
-  const lanes: LaneForDating[] = [...laneMap.keys()].sort((x, y) => x - y).map((lane) => ({ lane, tasks: laneMap.get(lane)! }));
+  const lanes: LaneForDating[] = [...laneMap.keys()].sort((x, y) => x - y).map((lane) => ({
+    lane,
+    // Date in priority order so the non-decreasing clamp gives higher-priority tasks earlier dates.
+    tasks: laneMap.get(lane)!.slice().sort((a, b) => PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority]),
+  }));
   const total = lanes.length;
   onProgress?.(0, total);
 
