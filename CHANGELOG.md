@@ -3,6 +3,13 @@
 All notable changes to spear. Format loosely follows [Keep a Changelog](https://keepachangelog.com);
 versions are the `vX.Y.Z` git tags that trigger a dmg/exe release.
 
+## [0.1.29] — 2026-06-18
+### Added
+- **Search tasks on Today.** A search box ranks open tasks by relevance (title, stage, type, notes) as
+  you type and shows the matches as a flat most-relevant-first list. Instant, client-side, no LLM.
+### Changed
+- The lane-count selector now goes up to **12** (was 8).
+
 ## [0.1.28] — 2026-06-18
 ### Added
 - **Build tasks from a link.** Paste a page URL into the add bar and spear reads it and derives tasks —
