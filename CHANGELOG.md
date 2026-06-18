@@ -3,6 +3,15 @@
 All notable changes to spear. Format loosely follows [Keep a Changelog](https://keepachangelog.com);
 versions are the `vX.Y.Z` git tags that trigger a dmg/exe release.
 
+## [0.1.28] — 2026-06-18
+### Added
+- **Build tasks from a link.** Paste a page URL into the add bar and spear reads it and derives tasks —
+  using the page's full contents together with your prompt (the page need not already be a task list).
+  Public pages via WebFetch; Notion workspace share-links via the Notion connector.
+### Changed
+- **Lane ordering**: in-progress first, then by due date (soonest first), then priority.
+- **Replan dates** now assigns earlier completion dates to higher-priority tasks within a lane.
+
 ## [0.1.27] — 2026-06-18
 ### Added
 - **Click a task to open its detail** (from Board, Today, or Week) — a sub-view with the task's info, an
