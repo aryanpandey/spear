@@ -116,4 +116,14 @@ CREATE TABLE IF NOT EXISTS scorecard_bonuses (
   sort INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_scorecard_bonuses_card ON scorecard_bonuses(scorecard_id);
+
+CREATE TABLE IF NOT EXISTS attachments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  filename TEXT NOT NULL,
+  original_name TEXT,
+  mime TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_attachments_task ON attachments(task_id);
 `;

@@ -18,6 +18,10 @@ export function notionSeedPath(): string {
   return path.join(spearHome(), "notion-seed.json");
 }
 
+export function attachmentsDir(): string {
+  return path.join(spearHome(), "attachments");
+}
+
 export function launchAgentPath(): string {
   return path.join(os.homedir(), "Library", "LaunchAgents", "com.spear.morning.plist");
 }

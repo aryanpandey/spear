@@ -81,6 +81,15 @@ export interface Dependency {
   blocked_by_task_id: number;
 }
 
+export interface Attachment {
+  id: number;
+  task_id: number;
+  filename: string;
+  original_name: string | null;
+  mime: string;
+  created_at: string;
+}
+
 export interface Executor {
   id: number;
   name: string;
