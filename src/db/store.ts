@@ -1,6 +1,7 @@
 import type { DB } from "./index.js";
 import { nowIso } from "../util/time.js";
 import type {
+  Attachment,
   DailyPlan,
   Dependency,
   Effort,
@@ -43,6 +44,13 @@ export interface NewStage {
   status?: StageStatus;
   effort?: Effort | null;
   delegatable_to?: ExecutorKind[];
+}
+
+export interface NewAttachment {
+  task_id: number;
+  filename: string;
+  original_name?: string | null;
+  mime: string;
 }
 
 export interface NewExecutor {
@@ -280,6 +288,37 @@ export class Store {
         id,
       });
     return this.getStage(id);
+  }
+
+  // ---- attachments ----
+
+  addAttachment(input: NewAttachment): Attachment {
+    const info = this.db
+      .prepare(
+        `INSERT INTO attachments (task_id, filename, original_name, mime, created_at)
+         VALUES (@task_id, @filename, @original_name, @mime, @created_at)`,
+      )
+      .run({
+        task_id: input.task_id,
+        filename: input.filename,
+        original_name: input.original_name ?? null,
+        mime: input.mime,
+        created_at: nowIso(),
+      });
+    return this.getAttachment(Number(info.lastInsertRowid))!;
+  }
+
+  getAttachment(id: number): Attachment | undefined {
+    const row = this.db.prepare("SELECT * FROM attachments WHERE id = ?").get(id) as Attachment | undefined;
+    return row ?? undefined;
+  }
+
+  listAttachments(taskId: number): Attachment[] {
+    return this.db.prepare("SELECT * FROM attachments WHERE task_id = ? ORDER BY id ASC").all(taskId) as Attachment[];
+  }
+
+  deleteAttachment(id: number): void {
+    this.db.prepare("DELETE FROM attachments WHERE id = ?").run(id);
   }
 
   // ---- dependencies ----

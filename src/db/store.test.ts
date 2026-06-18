@@ -108,3 +108,20 @@ describe("syncSingleGenericStageNames", () => {
     expect(store.getStages(multi.id).map((s) => s.name)).toEqual(["Plan", "Impl"]);
   });
 });
+
+describe("attachments", () => {
+  it("adds, lists, gets, deletes; cascades on task delete", () => {
+    const store = freshStore();
+    const t = store.createTask({ title: "t" });
+    const a = store.addAttachment({ task_id: t.id, filename: "x.png", original_name: "shot.png", mime: "image/png" });
+    expect(a.id).toBeGreaterThan(0);
+    expect(store.listAttachments(t.id).map((r) => r.filename)).toEqual(["x.png"]);
+    expect(store.getAttachment(a.id)!.mime).toBe("image/png");
+    store.deleteAttachment(a.id);
+    expect(store.listAttachments(t.id)).toHaveLength(0);
+
+    const b = store.addAttachment({ task_id: t.id, filename: "y.png", original_name: null, mime: "image/png" });
+    store.deleteTask(t.id); // ON DELETE CASCADE
+    expect(store.getAttachment(b.id)).toBeUndefined();
+  });
+});
