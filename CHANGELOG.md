@@ -3,6 +3,12 @@
 All notable changes to spear. Format loosely follows [Keep a Changelog](https://keepachangelog.com);
 versions are the `vX.Y.Z` git tags that trigger a dmg/exe release.
 
+## [0.1.27] — 2026-06-18
+### Added
+- **Click a task to open its detail** (from Board, Today, or Week) — a sub-view with the task's info, an
+  editable **Notes & details** field, and **image attachments** (paste / drag / pick; stored under
+  `~/.spear/attachments/`).
+
 ## [0.1.26] — 2026-06-17
 ### Added
 - **Light and friendly-dark themes** alongside the default Matrix theme — switch from the header; the
