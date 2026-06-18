@@ -6,6 +6,8 @@ export interface TaskSeed {
   details: string;
 }
 
+const URL_RE = /https?:\/\/\S+/i;
+
 const SYSTEM = `You turn a founder's raw capture into a list of distinct, actionable task seeds for a task tracker.
 
 Rules:
@@ -17,6 +19,7 @@ Rules:
 function buildPrompt(prompt: string, imagePath?: string): string {
   let s = SYSTEM + "\n\n";
   if (imagePath) s += `An image is attached at ${imagePath}. Read it and use its contents.\n`;
+  if (URL_RE.test(prompt)) s += `If the capture contains a URL, fetch that page (use WebFetch, or the Notion fetch tool for a Notion link) and extract the tasks/phases listed on it.\n`;
   s += `Capture:\n${prompt || "(no text — use the image)"}`;
   return s;
 }
@@ -33,7 +36,10 @@ export async function extractTaskSeeds(
   run: ClaudeRunner = claudeJson,
 ): Promise<TaskSeed[]> {
   const callOpts: ClaudeOpts = { ...opts };
-  if (imagePath) callOpts.allowedTools = ["Read"];
+  const tools: string[] = [];
+  if (imagePath) tools.push("Read");
+  if (URL_RE.test(prompt)) tools.push("WebFetch", "mcp__claude_ai_Notion__notion-fetch");
+  if (tools.length) callOpts.allowedTools = tools;
   const parsed = await claudeStructured(buildPrompt(prompt, imagePath), (x) => IntakeSchema.parse(x), callOpts, run);
   if (!parsed.seeds.length) return [{ title: prompt.trim() || "Untitled task", details: prompt.trim() }];
   return parsed.seeds;

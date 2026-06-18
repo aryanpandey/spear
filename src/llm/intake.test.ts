@@ -43,3 +43,25 @@ describe("extractTaskSeeds", () => {
     expect(seen.allowedTools).toBeUndefined();
   });
 });
+
+describe("extractTaskSeeds URL fetch", () => {
+  it("enables WebFetch + Notion fetch when the prompt has a URL", async () => {
+    let seen: any;
+    const run = async (_p: string, o: any) => {
+      seen = o;
+      return { seeds: [{ title: "t", details: "d" }] };
+    };
+    await extractTaskSeeds("get tasks from https://app.notion.com/p/abc", undefined, opts, run);
+    expect(seen.allowedTools).toContain("WebFetch");
+    expect(seen.allowedTools).toContain("mcp__claude_ai_Notion__notion-fetch");
+  });
+  it("does not enable fetch tools for a plain prompt", async () => {
+    let seen: any;
+    const run = async (_p: string, o: any) => {
+      seen = o;
+      return { seeds: [{ title: "t", details: "d" }] };
+    };
+    await extractTaskSeeds("just a normal task", undefined, opts, run);
+    expect(seen.allowedTools).toBeUndefined();
+  });
+});
