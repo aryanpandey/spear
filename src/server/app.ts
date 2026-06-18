@@ -269,9 +269,9 @@ export function buildServer(store: Store, cfg: SpearConfig): SpearServer {
   app.post("/api/config/lanes", async (req, reply) => {
     const body = (req.body ?? {}) as { lanes?: number };
     const n = Number(body.lanes);
-    if (!Number.isInteger(n) || n < 1 || n > 8) {
+    if (!Number.isInteger(n) || n < 1 || n > 12) {
       reply.code(400);
-      return { error: "lanes must be an integer 1–8" };
+      return { error: "lanes must be an integer 1–12" };
     }
     cfg.maxLanes = n; // mutate the object the Replanner holds, so the next plan uses it
     saveConfig(cfg); // persist for next boot

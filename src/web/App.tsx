@@ -156,7 +156,7 @@ export function App() {
         <label className="lanes-ctl" title="Max parallel lanes — changing this re-plans the board">
           lanes
           <select value={lanes} onChange={(e) => void changeLanes(Number(e.target.value))}>
-            {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
               <option key={n} value={n}>
                 {n}
               </option>
