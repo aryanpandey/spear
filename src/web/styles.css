@@ -868,3 +868,26 @@ main { padding: 18px 20px 40px; flex: 1; }
 /* Matrix-only flourishes off for the calmer themes (rain is also not rendered). */
 [data-theme="dark"] body::after,
 [data-theme="light"] body::after { display: none; }
+
+/* ---- v0.1.27: clickable cards + task detail ---- */
+.card.clickable, .cal-chip { cursor: pointer; }
+.task-detail { max-width: 760px; }
+.td-back { background: none; border: 1px solid var(--border); color: var(--text-dim); font: inherit; font-size: 11px; padding: 3px 10px; cursor: pointer; border-radius: 3px; }
+.td-back:hover { color: var(--green); border-color: var(--green); }
+.td-title { font-size: 16px; font-weight: 600; color: var(--text); margin: 12px 0 6px; }
+.td-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+.td-stages { display: flex; flex-direction: column; gap: 3px; margin-bottom: 10px; }
+.td-stage { font-size: 12px; }
+.td-section { color: var(--green); text-transform: uppercase; letter-spacing: 1px; font-size: 11px; margin: 14px 0 6px; }
+.td-notes {
+  width: 100%; min-height: 120px; resize: vertical;
+  background: var(--panel-solid); color: var(--text); border: 1px solid var(--border);
+  border-radius: 4px; padding: 8px 10px; font: inherit; font-size: 13px;
+}
+.td-notes:focus { outline: none; border-color: var(--green); box-shadow: var(--glow); }
+.td-attach { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; padding: 8px; border: 1px dashed var(--border); border-radius: 4px; }
+.td-thumb { position: relative; }
+.td-thumb img { height: 84px; width: auto; border: 1px solid var(--border); border-radius: 3px; display: block; }
+.td-thumb-x { position: absolute; top: -6px; right: -6px; background: var(--bg); border: 1px solid var(--crit); color: var(--crit); border-radius: 50%; width: 18px; height: 18px; line-height: 1; cursor: pointer; font-size: 11px; }
+.td-add { height: 84px; width: 84px; background: transparent; border: 1px dashed var(--border); color: var(--text-dim); font-size: 22px; cursor: pointer; border-radius: 3px; }
+.td-add:hover { color: var(--green); border-color: var(--green); }

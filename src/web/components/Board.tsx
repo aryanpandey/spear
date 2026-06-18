@@ -10,7 +10,7 @@ const COLUMNS: { status: TaskStatus; label: string }[] = [
   { status: "done", label: "Done" },
 ];
 
-function TaskCard({ task, onChange }: { task: BoardTask; onChange: () => void }) {
+function TaskCard({ task, onChange, onOpen }: { task: BoardTask; onChange: () => void; onOpen: (id: number) => void }) {
   const run = (fn: () => Promise<void>) => async () => {
     try {
       await fn();
@@ -20,7 +20,12 @@ function TaskCard({ task, onChange }: { task: BoardTask; onChange: () => void })
   };
 
   return (
-    <div className="card">
+    <div
+      className="card clickable"
+      onClick={(e) => {
+        if (!(e.target as HTMLElement).closest("button, input, select, textarea, a")) onOpen(task.id);
+      }}
+    >
       <div className="cardrow">
         <span className={`badge pri-${task.priority}`}>{task.priority}</span>
         <span className="kind">{task.type}</span>
@@ -63,7 +68,7 @@ function TaskCard({ task, onChange }: { task: BoardTask; onChange: () => void })
   );
 }
 
-export function Board({ data, onChange }: { data: BoardData; onChange: () => void }) {
+export function Board({ data, onChange, onOpen }: { data: BoardData; onChange: () => void; onOpen: (id: number) => void }) {
   return (
     <div className="board">
       {COLUMNS.map((col) => {
@@ -74,7 +79,7 @@ export function Board({ data, onChange }: { data: BoardData; onChange: () => voi
               {col.label} <span className="count">({tasks.length})</span>
             </h3>
             {tasks.map((t) => (
-              <TaskCard key={t.id} task={t} onChange={onChange} />
+              <TaskCard key={t.id} task={t} onChange={onChange} onOpen={onOpen} />
             ))}
             {tasks.length === 0 && <div className="muted" style={{ fontSize: 11 }}>—</div>}
           </div>

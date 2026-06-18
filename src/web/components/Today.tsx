@@ -130,7 +130,7 @@ function PriorityEditor({ item, onChange }: { item: TodayItem; onChange: () => v
 // generic stage just mirrors the title, so it isn't shown separately.
 const PHASE_KINDS = ["planning", "design", "implementation", "testing", "stage_testing"];
 
-function Item({ item, onChange }: { item: TodayItem; onChange: () => void }) {
+function Item({ item, onChange, onOpen }: { item: TodayItem; onChange: () => void; onOpen: (id: number) => void }) {
   const isPhase = PHASE_KINDS.includes(item.stage.kind);
   // Show the stage name (a phase label, or a sub-step of a multi-stage task) only
   // when it adds info beyond the task title; a lone generic stage just mirrors it.
@@ -145,7 +145,12 @@ function Item({ item, onChange }: { item: TodayItem; onChange: () => void }) {
   };
   const inProgress = item.task.status === "in_progress";
   return (
-    <div className={`card item ${item.scheduled_state}${inProgress ? " in-progress" : ""}`}>
+    <div
+      className={`card item ${item.scheduled_state}${inProgress ? " in-progress" : ""}`}
+      onClick={(e) => {
+        if (!(e.target as HTMLElement).closest("button, input, select, textarea, a")) onOpen(item.task.id);
+      }}
+    >
       <div className="cardrow">
         <span className={`sched ${item.scheduled_state}`}>{SCHED_LABEL[item.scheduled_state]}</span>
         {inProgress && <span className="badge in-progress">⟳ in progress</span>}
@@ -182,7 +187,7 @@ function Item({ item, onChange }: { item: TodayItem; onChange: () => void }) {
   );
 }
 
-function Lane({ lane, number, onChange }: { lane: TodayLane; number: number; onChange: () => void }) {
+function Lane({ lane, number, onChange, onOpen }: { lane: TodayLane; number: number; onChange: () => void; onOpen: (id: number) => void }) {
   // Float in-progress work to the top of the lane (stable otherwise).
   const items = [...lane.items].sort(
     (a, b) => Number(b.task.status === "in_progress") - Number(a.task.status === "in_progress"),
@@ -195,7 +200,7 @@ function Lane({ lane, number, onChange }: { lane: TodayLane; number: number; onC
         {lane.executor && <span className="ek">{lane.executor.kind}</span>}
       </div>
       {items.map((it) => (
-        <Item key={`${it.task.id}-${it.stage.id}`} item={it} onChange={onChange} />
+        <Item key={`${it.task.id}-${it.stage.id}`} item={it} onChange={onChange} onOpen={onOpen} />
       ))}
     </div>
   );
@@ -205,10 +210,12 @@ export function Today({
   data,
   onChange,
   redate,
+  onOpen,
 }: {
   data: TodayData;
   onChange: () => void;
   redate?: { done: number; total: number } | null;
+  onOpen: (id: number) => void;
 }) {
   if (!data.plan) {
     return <div className="empty">No current plan. Run <code>spear plan</code> to generate today's execution flow.</div>;
@@ -244,7 +251,7 @@ export function Today({
       ) : (
         <div className="lanes">
           {data.lanes.map((l, i) => (
-            <Lane key={l.lane} lane={l} number={i + 1} onChange={onChange} />
+            <Lane key={l.lane} lane={l} number={i + 1} onChange={onChange} onOpen={onOpen} />
           ))}
         </div>
       )}

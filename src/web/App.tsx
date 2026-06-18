@@ -7,6 +7,7 @@ import { Goals } from "./components/Goals";
 import { AddTask } from "./components/AddTask";
 import { DesktopButton } from "./components/DesktopButton";
 import { Logo } from "./components/Logo";
+import { TaskDetail } from "./components/TaskDetail";
 import { fetchBoard, fetchToday, fetchConfig, setMaxLanes, setTheme as persistTheme, type BoardData, type TodayData } from "./api";
 import { coerceTheme, THEMES, type Theme } from "../util/theme";
 
@@ -23,6 +24,7 @@ export function App() {
   const [lanes, setLanes] = useState<number>(6);
   const [redate, setRedate] = useState<{ done: number; total: number } | null>(null);
   const [theme, setTheme] = useState<Theme>(() => coerceTheme(localStorage.getItem("spear-theme")));
+  const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
 
   // Apply + cache the theme (config is the synced source of truth; localStorage avoids a flash).
   useEffect(() => {
@@ -128,18 +130,18 @@ export function App() {
           spear<span className="caret">_</span>
         </span>
         <div className="tabs">
-          <button className={`tab ${tab === "today" ? "active" : ""}`} onClick={() => setTab("today")}>
-            Today
-          </button>
-          <button className={`tab ${tab === "board" ? "active" : ""}`} onClick={() => setTab("board")}>
-            Board
-          </button>
-          <button className={`tab ${tab === "week" ? "active" : ""}`} onClick={() => setTab("week")}>
-            Week
-          </button>
-          <button className={`tab ${tab === "goals" ? "active" : ""}`} onClick={() => setTab("goals")}>
-            Goals
-          </button>
+          {(["today", "board", "week", "goals"] as Tab[]).map((tb) => (
+            <button
+              key={tb}
+              className={`tab ${tab === tb && selectedTaskId == null ? "active" : ""}`}
+              onClick={() => {
+                setTab(tb);
+                setSelectedTaskId(null);
+              }}
+            >
+              {tb}
+            </button>
+          ))}
         </div>
         <label className="lanes-ctl" title="App theme">
           theme
@@ -185,16 +187,22 @@ export function App() {
         </span>
       </header>
       <main>
-        {tab === "today" && (
+        {selectedTaskId != null ? (
+          <TaskDetail taskId={selectedTaskId} onBack={() => setSelectedTaskId(null)} onChange={load} />
+        ) : (
           <>
-            <AddTask onAdded={load} replanning={replanning} />
-            {today && <Today data={today} onChange={load} redate={redate} />}
+            {tab === "today" && (
+              <>
+                <AddTask onAdded={load} replanning={replanning} />
+                {today && <Today data={today} onChange={load} redate={redate} onOpen={setSelectedTaskId} />}
+              </>
+            )}
+            {tab === "board" && board && <Board data={board} onChange={load} onOpen={setSelectedTaskId} />}
+            {tab === "week" && board && <Calendar data={board} onChange={load} onOpen={setSelectedTaskId} />}
+            {tab === "goals" && <Goals />}
+            {tab !== "goals" && !board && !today && !err && <div className="empty">loading…</div>}
           </>
         )}
-        {tab === "board" && board && <Board data={board} onChange={load} />}
-        {tab === "week" && board && <Calendar data={board} onChange={load} />}
-        {tab === "goals" && <Goals />}
-        {tab !== "goals" && !board && !today && !err && <div className="empty">loading…</div>}
       </main>
     </div>
   );
