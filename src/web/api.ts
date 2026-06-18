@@ -50,6 +50,23 @@ export interface BoardData {
   executors: { id: number; name: string; kind: ExecutorKind; capacity: number }[];
 }
 
+export interface Attachment {
+  id: number;
+  taskId: number;
+  filename: string;
+  originalName: string | null;
+  mime: string;
+  createdAt: string;
+  url: string;
+}
+export interface TaskDetail {
+  task: { id: number; title: string; type: TaskType; priority: Priority; status: TaskStatus; due: string | null; description: string };
+  stages: BoardStage[];
+  blockedBy: number[];
+  openBlockers: number[];
+  attachments: Attachment[];
+}
+
 export interface TodayItem {
   order_in_lane: number;
   scheduled_state: ScheduledState;
@@ -204,6 +221,39 @@ export async function setMaxLanes(lanes: number): Promise<{ maxLanes: number }> 
 export async function replanDates(): Promise<void> {
   const r = await fetch("/api/plan/replan-dates", { method: "POST" });
   if (!r.ok) throw new Error(`replan-dates ${r.status}`);
+}
+
+export async function fetchTask(id: number): Promise<TaskDetail> {
+  const r = await fetch(`/api/tasks/${id}`);
+  if (!r.ok) throw new Error(`task ${r.status}`);
+  return r.json();
+}
+
+/** Save a task's notes/details (the description); server refreshes, no re-plan. */
+export async function setTaskDescription(id: number, description: string): Promise<void> {
+  const r = await fetch(`/api/tasks/${id}/description`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ description }),
+  });
+  if (!r.ok) throw new Error(`description ${r.status}`);
+}
+
+/** Upload an image attachment. `dataUrl` is a `data:<mime>;base64,<…>` string. */
+export async function addAttachment(id: number, dataUrl: string, name?: string): Promise<void> {
+  const m = /^data:([^;]+);base64,(.*)$/.exec(dataUrl);
+  if (!m) throw new Error("not an image");
+  const r = await fetch(`/api/tasks/${id}/attachments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ image: { mime: m[1], dataB64: m[2] }, name }),
+  });
+  if (!r.ok) throw new Error(`attach ${r.status}`);
+}
+
+export async function deleteAttachment(attId: number): Promise<void> {
+  const r = await fetch(`/api/attachments/${attId}`, { method: "DELETE" });
+  if (!r.ok) throw new Error(`detach ${r.status}`);
 }
 
 export async function setTaskStatus(id: number, status: TaskStatus): Promise<void> {
