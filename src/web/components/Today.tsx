@@ -13,6 +13,7 @@ import {
   type TodayLane,
 } from "../api";
 import { EditableTitle } from "./EditableTitle";
+import { compareLaneItems } from "../../util/laneSort";
 
 const PRIORITIES: Priority[] = ["critical", "high", "medium", "low"];
 
@@ -188,10 +189,8 @@ function Item({ item, onChange, onOpen }: { item: TodayItem; onChange: () => voi
 }
 
 function Lane({ lane, number, onChange, onOpen }: { lane: TodayLane; number: number; onChange: () => void; onOpen: (id: number) => void }) {
-  // Float in-progress work to the top of the lane (stable otherwise).
-  const items = [...lane.items].sort(
-    (a, b) => Number(b.task.status === "in_progress") - Number(a.task.status === "in_progress"),
-  );
+  // In-progress first, then by due date (soonest first, undated last), then priority.
+  const items = [...lane.items].sort(compareLaneItems);
   return (
     <div className="lane">
       <div className="lane-head">
