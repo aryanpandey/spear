@@ -157,3 +157,65 @@ export function todayDto(store: Store): TodayDto {
     lanes,
   };
 }
+
+export interface AttachmentDto {
+  id: number;
+  taskId: number;
+  filename: string;
+  originalName: string | null;
+  mime: string;
+  createdAt: string;
+  url: string;
+}
+
+export interface TaskDetailDto {
+  task: {
+    id: number;
+    title: string;
+    type: TaskType;
+    priority: Priority;
+    status: TaskStatus;
+    due: string | null;
+    description: string;
+  };
+  stages: BoardStageDto[];
+  blockedBy: number[];
+  openBlockers: number[];
+  attachments: AttachmentDto[];
+}
+
+export function taskDetailDto(store: Store, id: number): TaskDetailDto | null {
+  const task = store.getTask(id);
+  if (!task) return null;
+  return {
+    task: {
+      id: task.id,
+      title: task.title,
+      type: task.type,
+      priority: task.priority,
+      status: task.status,
+      due: task.due,
+      description: task.description,
+    },
+    stages: store.getStages(id).map((s) => ({
+      id: s.id,
+      name: s.name,
+      kind: s.kind,
+      seq: s.seq,
+      status: s.status,
+      effort: s.effort,
+      delegatable_to: s.delegatable_to,
+    })),
+    blockedBy: store.blockedBy(id),
+    openBlockers: openDependencies(store, id),
+    attachments: store.listAttachments(id).map((a) => ({
+      id: a.id,
+      taskId: a.task_id,
+      filename: a.filename,
+      originalName: a.original_name,
+      mime: a.mime,
+      createdAt: a.created_at,
+      url: `/api/attachments/${encodeURIComponent(a.filename)}`,
+    })),
+  };
+}
