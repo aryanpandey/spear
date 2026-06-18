@@ -8,18 +8,19 @@ export interface TaskSeed {
 
 const URL_RE = /https?:\/\/\S+/i;
 
-const SYSTEM = `You turn a founder's raw capture into a list of distinct, actionable task seeds for a task tracker.
+const SYSTEM = `You turn a founder's capture into a list of distinct, actionable task seeds for a task tracker.
 
 Rules:
-- Identify each SEPARATE actionable task. If the input (text and/or image) describes one thing, return one seed; if it lists several, return one seed per item.
+- Work out the set of tasks the capture calls for. The capture may be (a) an explicit list — split it into one seed per item; (b) a single thing — one seed; or (c) unstructured content (notes, a doc, a fetched page) plus an instruction — DERIVE the tasks the instruction asks for from that content. The content need NOT already be structured as tasks.
+- Consider ALL of the capture together — typed text, any attached image, and any fetched page — and follow the instruction in the typed text (e.g. "create implementation tasks from this doc", "add the testing phases").
 - Each seed: a short imperative "title" and one or two sentences of "details" giving the breakdown step enough context.
-- Do NOT plan, prioritize, or break into stages — that happens later. Just split and summarize.
+- Do NOT plan, prioritize, or break into stages — that happens later. Just produce the task list.
 - Output ONLY a JSON object: {"seeds":[{"title":string,"details":string}]} — no prose, no markdown fences.`;
 
 function buildPrompt(prompt: string, imagePath?: string): string {
   let s = SYSTEM + "\n\n";
   if (imagePath) s += `An image is attached at ${imagePath}. Read it and use its contents.\n`;
-  if (URL_RE.test(prompt)) s += `If the capture contains a URL, fetch that page (use WebFetch, or the Notion fetch tool for a Notion link) and extract the tasks/phases listed on it.\n`;
+  if (URL_RE.test(prompt)) s += `If the capture contains a URL, fetch that page (use WebFetch, or the Notion fetch tool for a Notion link). Then, using BOTH the page's full contents AND the instruction in the capture, derive the tasks to create — the page need not already be a task list.\n`;
   s += `Capture:\n${prompt || "(no text — use the image)"}`;
   return s;
 }
