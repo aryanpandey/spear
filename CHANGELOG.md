@@ -3,6 +3,12 @@
 All notable changes to spear. Format loosely follows [Keep a Changelog](https://keepachangelog.com);
 versions are the `vX.Y.Z` git tags that trigger a dmg/exe release.
 
+## [0.1.30] — 2026-06-18
+### Added
+- **`spear show` lists attachments** — each task's image attachments (name · mime · on-disk path);
+  `spear show <id> --open` opens the attachment files. (`spear show` already prints the title, priority,
+  status, type/effort/due, notes, blockers, and stages.)
+
 ## [0.1.29] — 2026-06-18
 ### Added
 - **Search tasks on Today.** A search box ranks open tasks by relevance (title, stage, type, notes) as

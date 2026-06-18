@@ -1,6 +1,9 @@
+import { exec } from "node:child_process";
+import path from "node:path";
 import type { Command } from "commander";
 import { openStore } from "../context.js";
 import { openDependencies } from "../service.js";
+import { attachmentsDir } from "../paths.js";
 import { c, priorityColor, statusColor } from "../util/render.js";
 
 const STAGE_MARK: Record<string, string> = {
@@ -14,8 +17,9 @@ export function registerShow(program: Command): void {
   program
     .command("show")
     .argument("<taskId>", "task id")
-    .description("Show a task with its stages and dependencies")
-    .action((taskIdRaw: string) => {
+    .description("Show a task with its stages, dependencies, and attachments")
+    .option("--open", "open this task's attachment files")
+    .action((taskIdRaw: string, opts: { open?: boolean }) => {
       const taskId = Number(taskIdRaw);
       const store = openStore();
       try {
@@ -47,6 +51,20 @@ export function registerShow(program: Command): void {
           console.log(
             `    ${statusColor(s.status, mark)} ${c.dim(`#${s.id}`)} ${s.name} ${c.gray(`(${s.kind}${s.effort ? `, ${s.effort}` : ""})`)}${deleg}`,
           );
+        }
+
+        const attachments = store.listAttachments(task.id);
+        if (attachments.length) {
+          console.log(c.dim(`  attachments (${attachments.length}):`));
+          for (const a of attachments) {
+            const p = path.join(attachmentsDir(), a.filename);
+            console.log(`    ${c.dim(`#${a.id}`)} ${a.original_name ?? a.filename} ${c.gray(`(${a.mime})`)}  ${c.dim(p)}`);
+          }
+          if (opts.open) {
+            for (const a of attachments) exec(`open "${path.join(attachmentsDir(), a.filename)}"`);
+          }
+        } else if (opts.open) {
+          console.log(c.dim("  no attachments to open"));
         }
       } finally {
         store.db.close();
