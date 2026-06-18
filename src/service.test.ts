@@ -11,6 +11,7 @@ import {
   openDependencies,
   recomputeTaskStatus,
   removeTask,
+  setTaskDescription,
   setTaskDue,
   setTaskPriority,
   setTaskStatus,
@@ -225,5 +226,17 @@ describe("setTaskTitle", () => {
     }).task;
     setTaskTitle(store, t.id, "renamed feat");
     expect(store.getStages(t.id).map((s) => s.name)).toEqual(["Plan", "Impl"]);
+  });
+});
+
+describe("setTaskDescription", () => {
+  let store: Store;
+  beforeEach(() => (store = freshStore()));
+
+  it("sets the description (incl. empty) and throws on unknown", () => {
+    const t = addTask(store, { title: "t" }).task;
+    expect(setTaskDescription(store, t.id, "some notes").description).toBe("some notes");
+    expect(setTaskDescription(store, t.id, "").description).toBe("");
+    expect(() => setTaskDescription(store, 9999, "x")).toThrow();
   });
 });

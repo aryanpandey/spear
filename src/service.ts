@@ -159,6 +159,13 @@ export function setTaskTitle(store: Store, taskId: number, title: string): Task 
   return store.getTask(taskId)!;
 }
 
+/** Set a task's free-form notes/details (the description). Empty is allowed. */
+export function setTaskDescription(store: Store, taskId: number, description: string): Task {
+  if (!store.getTask(taskId)) throw new Error(`task ${taskId} not found`);
+  store.updateTask(taskId, { description });
+  return store.getTask(taskId)!;
+}
+
 /** Set a task's status explicitly. */
 export function setTaskStatus(store: Store, taskId: number, status: TaskStatus): Task {
   if (!store.getTask(taskId)) throw new Error(`task ${taskId} not found`);
