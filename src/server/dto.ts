@@ -84,7 +84,7 @@ export interface TodayItemDto {
   dueBand: DueBand;
   /** Whether the task has more than one stage (so the stage name is a real sub-step worth showing). */
   multiStage: boolean;
-  task: { id: number; title: string; priority: Priority; type: TaskType; status: TaskStatus };
+  task: { id: number; title: string; priority: Priority; type: TaskType; status: TaskStatus; description: string };
   stage: { id: number; name: string; kind: StageKind; status: StageStatus; effort: Effort | null };
 }
 
@@ -129,7 +129,7 @@ export function todayDto(store: Store): TodayDto {
       suggestedDueReason: task.suggested_due_reason,
       dueBand: dueBand(task.due, now),
       multiStage: store.getStages(task.id).length > 1,
-      task: { id: task.id, title: task.title, priority: task.priority, type: task.type, status: task.status },
+      task: { id: task.id, title: task.title, priority: task.priority, type: task.type, status: task.status, description: task.description },
       stage: { id: stage.id, name: stage.name, kind: stage.kind, status: stage.status, effort: stage.effort },
     });
   }
