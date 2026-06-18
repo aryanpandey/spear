@@ -14,6 +14,7 @@ import {
 } from "../api";
 import { EditableTitle } from "./EditableTitle";
 import { compareLaneItems } from "../../util/laneSort";
+import { rankTasks } from "../../util/taskSearch";
 
 const PRIORITIES: Priority[] = ["critical", "high", "medium", "low"];
 
@@ -220,6 +221,13 @@ export function Today({
     return <div className="empty">No current plan. Run <code>spear plan</code> to generate today's execution flow.</div>;
   }
   const pct = redate && redate.total ? Math.round((redate.done / redate.total) * 100) : 0;
+  const [query, setQuery] = useState("");
+  const results = rankTasks(
+    data.lanes.flatMap((l) => l.items),
+    query,
+    (it) => ({ title: it.task.title, stageName: it.stage.name, type: it.task.type, description: it.task.description }),
+  );
+  const searching = query.trim().length > 0;
   return (
     <div>
       <div className="narrative">
@@ -245,7 +253,31 @@ export function Today({
         )}
         {data.plan.narrative}
       </div>
-      {data.lanes.length === 0 ? (
+      <div className="task-search">
+        <span className="task-search-icon">⌕</span>
+        <input
+          className="task-search-input"
+          placeholder="search tasks — title, stage, notes…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        {searching && (
+          <button className="task-search-x" title="clear" onClick={() => setQuery("")}>
+            ✕
+          </button>
+        )}
+      </div>
+      {searching ? (
+        <div className="search-results">
+          <div className="muted" style={{ marginBottom: 8 }}>
+            {results.length} match{results.length === 1 ? "" : "es"} for “{query.trim()}”
+          </div>
+          {results.map((it) => (
+            <Item key={`${it.task.id}-${it.stage.id}`} item={it} onChange={onChange} onOpen={onOpen} />
+          ))}
+          {results.length === 0 && <div className="empty">no matching tasks.</div>}
+        </div>
+      ) : data.lanes.length === 0 ? (
         <div className="empty">inbox zero — no open work.</div>
       ) : (
         <div className="lanes">

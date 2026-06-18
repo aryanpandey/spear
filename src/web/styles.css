@@ -891,3 +891,30 @@ main { padding: 18px 20px 40px; flex: 1; }
 .td-thumb-x { position: absolute; top: -6px; right: -6px; background: var(--bg); border: 1px solid var(--crit); color: var(--crit); border-radius: 50%; width: 18px; height: 18px; line-height: 1; cursor: pointer; font-size: 11px; }
 .td-add { height: 84px; width: 84px; background: transparent; border: 1px dashed var(--border); color: var(--text-dim); font-size: 22px; cursor: pointer; border-radius: 3px; }
 .td-add:hover { color: var(--green); border-color: var(--green); }
+
+/* ---- v0.1.29: Today task search ---- */
+.task-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  padding: 5px 10px;
+}
+.task-search:focus-within { border-color: var(--green); box-shadow: var(--glow); }
+.task-search-icon { color: var(--green); }
+.task-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  padding: 3px 2px;
+}
+.task-search-input:focus { outline: none; }
+.task-search-input::placeholder { color: var(--text-dim); }
+.task-search-x { background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 12px; }
+.task-search-x:hover { color: var(--crit); }
+.search-results { max-width: 520px; }
