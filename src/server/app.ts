@@ -12,11 +12,12 @@ import { intakeTasks, extractSeedsForIntake, createTasksFromSeeds, mimeExt, type
 import { checkSeedsForDuplicates } from "./duplicateCheck.js";
 import type { TaskSeed } from "../llm/intake.js";
 import { coerceTheme, THEMES } from "../util/theme.js";
-import { addTask, advanceTask, completeTask, removeTask, setTaskDue, setTaskPriority, setTaskStatus, setTaskTitle } from "../service.js";
+import { addTask, advanceTask, completeTask, removeTask, setTaskDue, setTaskPriority, setTaskStatus, setTaskTitle, setTaskDescription } from "../service.js";
+import { attachmentsDir } from "../paths.js";
 import { breakdownForAdd } from "../breakdown/index.js";
 import { PRIORITIES, TASK_STATUSES, TASK_TYPES, type Priority, type TaskStatus, type TaskType } from "../types.js";
 import { GOAL_STATUSES, type GoalStatus } from "../types.js";
-import { boardDto, todayDto } from "./dto.js";
+import { boardDto, todayDto, taskDetailDto } from "./dto.js";
 import { goalsPageDto, scorecardDto } from "./goalsDto.js";
 import { desktopManifest, releaseDir } from "./desktop.js";
 import { createSseHub } from "./sse.js";
@@ -339,6 +340,83 @@ export function buildServer(store: Store, cfg: SpearConfig): SpearServer {
     return { task };
   });
 
+  app.get<{ Params: { id: string } }>("/api/tasks/:id", async (req, reply) => {
+    const dto = taskDetailDto(store, Number(req.params.id));
+    if (!dto) {
+      reply.code(404);
+      return { error: "not found" };
+    }
+    return dto;
+  });
+
+  app.post<{ Params: { id: string }; Body: { description?: string } }>("/api/tasks/:id/description", async (req, reply) => {
+    const id = Number(req.params.id);
+    if (!store.getTask(id)) {
+      reply.code(404);
+      return { error: "not found" };
+    }
+    const task = setTaskDescription(store, id, typeof req.body?.description === "string" ? req.body.description : "");
+    hub.broadcast({ type: "update", source: "refresh" }); // notes — no re-plan
+    return { task };
+  });
+
+  // ---- attachments ----
+  app.post<{ Params: { id: string }; Body: { image?: { mime?: string; dataB64?: string }; name?: string } }>(
+    "/api/tasks/:id/attachments",
+    async (req, reply) => {
+      const id = Number(req.params.id);
+      if (!store.getTask(id)) {
+        reply.code(404);
+        return { error: "not found" };
+      }
+      const img = req.body?.image;
+      if (!img?.dataB64) {
+        reply.code(400);
+        return { error: "image required" };
+      }
+      const dir = attachmentsDir();
+      fs.mkdirSync(dir, { recursive: true });
+      const filename = `${randomUUID()}.${mimeExt(img.mime)}`;
+      fs.writeFileSync(path.join(dir, filename), Buffer.from(img.dataB64, "base64"));
+      const attachment = store.addAttachment({
+        task_id: id,
+        filename,
+        original_name: typeof req.body?.name === "string" ? req.body.name : null,
+        mime: img.mime ?? "image/png",
+      });
+      hub.broadcast({ type: "update", source: "refresh" });
+      return { attachment };
+    },
+  );
+
+  const ATTACH_MIME: Record<string, string> = { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp", gif: "image/gif" };
+  app.get<{ Params: { filename: string } }>("/api/attachments/:filename", async (req, reply) => {
+    const name = path.basename(req.params.filename); // prevent traversal
+    const full = path.join(attachmentsDir(), name);
+    if (!fs.existsSync(full) || !fs.statSync(full).isFile()) {
+      reply.code(404);
+      return { error: "not found" };
+    }
+    reply.type(ATTACH_MIME[name.split(".").pop()?.toLowerCase() ?? ""] ?? "application/octet-stream");
+    return reply.send(fs.createReadStream(full));
+  });
+
+  app.delete<{ Params: { id: string } }>("/api/attachments/:id", async (req, reply) => {
+    const att = store.getAttachment(Number(req.params.id));
+    if (!att) {
+      reply.code(404);
+      return { error: "not found" };
+    }
+    try {
+      fs.unlinkSync(path.join(attachmentsDir(), att.filename));
+    } catch {
+      /* file may already be gone */
+    }
+    store.deleteAttachment(att.id);
+    hub.broadcast({ type: "update", source: "refresh" });
+    return { ok: true };
+  });
+
   app.post<{ Params: { id: string }; Body: { due?: string | null } }>("/api/tasks/:id/due", async (req, reply) => {
     const id = Number(req.params.id);
     if (!store.getTask(id)) {
@@ -361,6 +439,13 @@ export function buildServer(store: Store, cfg: SpearConfig): SpearServer {
     if (!store.getTask(id)) {
       reply.code(404);
       return { error: "not found" };
+    }
+    for (const a of store.listAttachments(id)) {
+      try {
+        fs.unlinkSync(path.join(attachmentsDir(), a.filename));
+      } catch {
+        /* best-effort */
+      }
     }
     removeTask(store, id);
     hub.broadcast({ type: "update", source: "refresh" }); // deletion — no re-plan
