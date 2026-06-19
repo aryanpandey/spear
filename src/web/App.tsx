@@ -8,7 +8,7 @@ import { AddTask } from "./components/AddTask";
 import { DesktopButton } from "./components/DesktopButton";
 import { Logo } from "./components/Logo";
 import { TaskDetail } from "./components/TaskDetail";
-import { fetchBoard, fetchToday, fetchConfig, setMaxLanes, setTheme as persistTheme, type BoardData, type TodayData } from "./api";
+import { fetchBoard, fetchToday, fetchConfig, setMaxLanes, setCapacity, setTheme as persistTheme, type BoardData, type TodayData } from "./api";
 import { coerceTheme, THEMES, type Theme } from "../util/theme";
 
 type Tab = "today" | "board" | "week" | "goals";
@@ -22,7 +22,8 @@ export function App() {
   const [refreshing, setRefreshing] = useState(false);
   const [replanning, setReplanning] = useState(false);
   const [lanes, setLanes] = useState<number>(6);
-  const [redate, setRedate] = useState<{ done: number; total: number } | null>(null);
+  const [capacity, setCapacityState] = useState<number>(0); // 0 = auto (= lane count)
+  const [redate, setRedate] = useState<boolean>(false);
   const [theme, setTheme] = useState<Theme>(() => coerceTheme(localStorage.getItem("spear-theme")));
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
 
@@ -75,11 +76,21 @@ export function App() {
     }
   }, []);
 
+  const changeCapacity = useCallback(async (n: number) => {
+    setCapacityState(n); // optimistic; the redate's SSE will refresh the board
+    try {
+      await setCapacity(n);
+    } catch {
+      /* leave the optimistic value; next fetchConfig corrects it */
+    }
+  }, []);
+
   useEffect(() => {
     load();
     fetchConfig()
       .then((c) => {
         setLanes(c.maxLanes);
+        setCapacityState(c.dailyTaskCapacity ?? 0);
         setTheme(coerceTheme(c.theme));
       })
       .catch(() => {});
@@ -104,9 +115,8 @@ export function App() {
         setReplanning(false);
       }
       if (msg?.type === "redate") {
-        const m = msg as { phase?: string; done?: number; total?: number };
-        if (m.phase === "end") setRedate(null);
-        else setRedate({ done: m.done ?? 0, total: m.total ?? 0 });
+        const m = msg as { phase?: string };
+        setRedate(m.phase !== "end"); // single global call: active until "end"
         load();
         return;
       }
@@ -157,6 +167,17 @@ export function App() {
           lanes
           <select value={lanes} onChange={(e) => void changeLanes(Number(e.target.value))}>
             {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="lanes-ctl" title="Tasks you finish per day — used by ‘replan dates’ (auto = lane count)">
+          tasks/day
+          <select value={capacity} onChange={(e) => void changeCapacity(Number(e.target.value))}>
+            <option value={0}>auto ({lanes})</option>
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].map((n) => (
               <option key={n} value={n}>
                 {n}
               </option>

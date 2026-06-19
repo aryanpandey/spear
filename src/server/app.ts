@@ -252,8 +252,8 @@ export function buildServer(store: Store, cfg: SpearConfig): SpearServer {
     }
   });
 
-  // ---- config (lane count + theme) ----
-  app.get("/api/config", async () => ({ maxLanes: cfg.maxLanes, theme: cfg.theme }));
+  // ---- config (lane count + theme + daily task capacity) ----
+  app.get("/api/config", async () => ({ maxLanes: cfg.maxLanes, theme: cfg.theme, dailyTaskCapacity: cfg.dailyTaskCapacity }));
 
   app.post("/api/config/theme", async (req, reply) => {
     const body = (req.body ?? {}) as { theme?: string };
@@ -277,6 +277,19 @@ export function buildServer(store: Store, cfg: SpearConfig): SpearServer {
     saveConfig(cfg); // persist for next boot
     replanner.requestReplanThenRedate(); // reorder into the new lane count, then re-date
     return { maxLanes: n };
+  });
+
+  app.post("/api/config/capacity", async (req, reply) => {
+    const body = (req.body ?? {}) as { capacity?: number };
+    const n = Number(body.capacity);
+    if (!Number.isInteger(n) || n < 0 || n > 20) {
+      reply.code(400);
+      return { error: "capacity must be an integer 0–20 (0 = auto)" };
+    }
+    cfg.dailyTaskCapacity = n; // mutate the object the Replanner holds
+    saveConfig(cfg); // persist for next boot
+    replanner.requestRedate(); // capacity only changes dates, not lane assignment
+    return { dailyTaskCapacity: n };
   });
 
   // ---- re-decide completion dates on the current lanes (no re-plan) ----

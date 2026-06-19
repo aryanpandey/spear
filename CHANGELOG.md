@@ -3,6 +3,21 @@
 All notable changes to spear. Format loosely follows [Keep a Changelog](https://keepachangelog.com);
 versions are the `vX.Y.Z` git tags that trigger a dmg/exe release.
 
+## [0.1.31] — 2026-06-19
+### Changed
+- **Replan dates is now global and capacity-based.** Instead of one LLM call per lane assuming
+  "~2 tasks/lane/day", a single call dates **all** open tasks at once — ordered globally by
+  priority and packed by a configurable **tasks/day** capacity, where a *large* task counts as
+  two. Because lane number no longer drives the schedule, any lane reordering is absorbed. If the
+  LLM call fails, a deterministic capacity schedule still dates every task.
+### Added
+- **`tasks/day` header control** next to `lanes` — how many tasks you finish in a day (default
+  **auto** = the lane count, or 1–20). Persisted to config (`dailyTaskCapacity`, 0 = auto);
+  changing it re-dates.
+### Notes
+- The re-dating progress bar is now an indeterminate "⟳ re-dating…" indicator (a single global
+  call has no honest per-step percentage).
+
 ## [0.1.30] — 2026-06-18
 ### Added
 - **`spear show` lists attachments** — each task's image attachments (name · mime · on-disk path);

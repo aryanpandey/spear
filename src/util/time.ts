@@ -40,6 +40,12 @@ function offsetDays(now: Date, n: number): string {
   return todayLocal(new Date(now.getFullYear(), now.getMonth(), now.getDate() + n));
 }
 
+/** Add `days` to a local YYYY-MM-DD string, returning a YYYY-MM-DD string. */
+export function addDaysLocal(dateStr: string, days: number): string {
+  const d = parseDateLocal(dateStr) ?? new Date();
+  return offsetDays(d, days);
+}
+
 /**
  * Parse a user-supplied deadline into a normalized YYYY-MM-DD, or null to clear.
  * Accepts: `YYYY-MM-DD`, `+Nd` (N days from now), `today`, `tomorrow`, and

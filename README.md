@@ -104,6 +104,10 @@ tabs, all live over SSE:
   - **auto** or explicit priority;
   - warns if a task looks like a **duplicate** of an existing one, with **Add anyway**;
   - click **+ due** for a one-click suggested deadline (pre-computed from priority + your load).
+  - **⟳ replan dates** re-decides every open task's completion date in one pass: all tasks are
+    ordered globally by priority and scheduled by a configurable **tasks/day** capacity (header
+    control; **auto** = the lane count), where a *large* task counts as two. Robust to lane
+    reordering.
 - **Board** — tasks by status (Backlog · To Do · In Progress · Blocked · Done) with stage
   progress and blockers, plus quick actions **▶ start** / **✓ done** / **✕** and click-to-edit
   priority.
@@ -200,7 +204,8 @@ spear import-notion --breakdown  # also break new tasks into stages
 ## Config
 
 `~/.spear/config.json` — `port`, `morning.{hour,minute}`, `models.{breakdown,planner,duplicate}`,
-`effort.{breakdown,planner,duplicate}`, `defaultPriority`, `maxLanes`, `replanDebounceMs`. The
+`effort.{breakdown,planner,duplicate,dates}`, `defaultPriority`, `maxLanes`, `dailyTaskCapacity`
+(0 = auto = `maxLanes`), `replanDebounceMs`. The
 duplicate-detection call defaults to `claude-sonnet-4-6`. View/edit with
 `spear config [get|set] <key> [value]`.
 

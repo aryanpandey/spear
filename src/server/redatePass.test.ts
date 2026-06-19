@@ -3,6 +3,7 @@ import { openDb } from "../db/index.js";
 import { Store } from "../db/store.js";
 import { DEFAULT_CONFIG } from "../config/index.js";
 import { addTask } from "../service.js";
+import { todayLocal, addDaysLocal } from "../util/time.js";
 import { redateCurrentPlan } from "./redatePass.js";
 
 function makeStore(): Store {
@@ -13,9 +14,19 @@ function makeStore(): Store {
 function planItem(task_id: number, stage_id: number, lane: number, order: number) {
   return { task_id, stage_id, lane, order_in_lane: order, executor_id: null, is_delegation_candidate: false, scheduled_state: "start_now" as const, rationale: "" };
 }
+// A fake runner that echoes a fixed id→date map, only for the tasks present in the prompt.
+function runnerFor(planned: Record<number, string>) {
+  return async (prompt: string) => ({
+    dates: Object.entries(planned)
+      .filter(([id]) => prompt.includes(`"task_id":${id}`))
+      .map(([id, date]) => ({ task_id: Number(id), date })),
+  });
+}
 
 describe("redateCurrentPlan", () => {
-  it("clamps within-lane dates non-decreasing, skips done, reports progress", async () => {
+  const today = todayLocal();
+
+  it("clamps dates globally non-decreasing, skips done, reports start/end progress", async () => {
     const store = makeStore();
     const a = addTask(store, { title: "a", stages: [{ name: "s", kind: "generic" }] });
     const b = addTask(store, { title: "b", stages: [{ name: "s", kind: "generic" }] });
@@ -23,7 +34,7 @@ describe("redateCurrentPlan", () => {
     const done = addTask(store, { title: "done", stages: [{ name: "s", kind: "generic" }] });
     store.updateTask(done.task.id, { status: "done" });
     store.savePlan(
-      { plan_date: "2026-06-17", trigger: "manual", narrative: "", model: "m" },
+      { plan_date: today, trigger: "manual", narrative: "", model: "m" },
       [
         planItem(a.task.id, a.stages[0].id, 0, 0),
         planItem(b.task.id, b.stages[0].id, 0, 1),
@@ -31,47 +42,60 @@ describe("redateCurrentPlan", () => {
         planItem(c.task.id, c.stages[0].id, 1, 0),
       ],
     );
-    // out-of-order: lane-0 second task (b) earlier than first (a) → must clamp up to a's date
-    const planned: Record<number, string> = { [a.task.id]: "2026-06-20", [b.task.id]: "2026-06-18", [c.task.id]: "2026-06-19" };
-    const run = async (prompt: string) => ({
-      dates: Object.entries(planned)
-        .filter(([id]) => prompt.includes(`"task_id":${id}`))
-        .map(([id, date]) => ({ task_id: Number(id), date })),
-    });
+    // Equal priority → global order is plan order a, b, c. b earlier than a → clamps up; c kept.
+    const planned = { [a.task.id]: addDaysLocal(today, 1), [b.task.id]: today, [c.task.id]: addDaysLocal(today, 3) };
     const progress: Array<[number, number]> = [];
-    const n = await redateCurrentPlan(store, DEFAULT_CONFIG, (d, t) => progress.push([d, t]), run);
+    const n = await redateCurrentPlan(store, DEFAULT_CONFIG, (d, t) => progress.push([d, t]), runnerFor(planned));
 
-    expect(store.getTask(a.task.id)!.due).toBe("2026-06-20");
-    expect(store.getTask(b.task.id)!.due).toBe("2026-06-20"); // clamped, not 2026-06-18
-    expect(store.getTask(c.task.id)!.due).toBe("2026-06-19");
+    expect(store.getTask(a.task.id)!.due).toBe(addDaysLocal(today, 1));
+    expect(store.getTask(b.task.id)!.due).toBe(addDaysLocal(today, 1)); // clamped up, not `today`
+    expect(store.getTask(c.task.id)!.due).toBe(addDaysLocal(today, 3));
     expect(store.getTask(done.task.id)!.due).toBeNull(); // done task skipped
     expect(n).toBe(3);
-    expect(progress).toEqual([[0, 2], [1, 2], [2, 2]]); // (0,total) then per-lane
+    expect(progress).toEqual([[0, 1], [1, 1]]); // single global call: start then end
   });
 
   it("returns 0 when there is no current plan", async () => {
     const store = makeStore();
-    const run = async () => ({ dates: [] });
-    expect(await redateCurrentPlan(store, DEFAULT_CONFIG, undefined, run)).toBe(0);
+    expect(await redateCurrentPlan(store, DEFAULT_CONFIG, undefined, runnerFor({}))).toBe(0);
   });
 
-  it("dates higher-priority tasks earlier within a lane, regardless of plan order", async () => {
+  it("dates higher-priority tasks earlier ACROSS lanes (global, not per-lane)", async () => {
     const store = makeStore();
     const low = addTask(store, { title: "low", priority: "low", stages: [{ name: "s", kind: "generic" }] });
     const high = addTask(store, { title: "high", priority: "critical", stages: [{ name: "s", kind: "generic" }] });
     store.savePlan(
-      { plan_date: "2026-06-18", trigger: "manual", narrative: "", model: "m" },
-      [planItem(low.task.id, low.stages[0].id, 0, 0), planItem(high.task.id, high.stages[0].id, 0, 1)],
+      { plan_date: today, trigger: "manual", narrative: "", model: "m" },
+      [planItem(low.task.id, low.stages[0].id, 0, 0), planItem(high.task.id, high.stages[0].id, 1, 0)],
     );
-    const planned: Record<number, string> = { [low.task.id]: "2026-06-22", [high.task.id]: "2026-06-19" };
-    const run = async (prompt: string) => ({
-      dates: Object.entries(planned)
-        .filter(([id]) => prompt.includes(`"task_id":${id}`))
-        .map(([id, date]) => ({ task_id: Number(id), date })),
-    });
-    await redateCurrentPlan(store, DEFAULT_CONFIG, undefined, run);
-    expect(store.getTask(high.task.id)!.due).toBe("2026-06-19"); // critical sorted first → its date
-    expect(store.getTask(low.task.id)!.due).toBe("2026-06-22"); // clamped ≥ the critical date
+    const planned = { [low.task.id]: addDaysLocal(today, 3), [high.task.id]: today };
+    await redateCurrentPlan(store, DEFAULT_CONFIG, undefined, runnerFor(planned));
+    expect(store.getTask(high.task.id)!.due).toBe(today); // critical sorted first → its early date
+    expect(store.getTask(low.task.id)!.due).toBe(addDaysLocal(today, 3));
     expect(store.getTask(high.task.id)!.due! <= store.getTask(low.task.id)!.due!).toBe(true);
+  });
+
+  it("falls back to a deterministic capacity schedule when the LLM call throws", async () => {
+    const store = makeStore();
+    const t0 = addTask(store, { title: "t0", stages: [{ name: "s", kind: "generic" }] });
+    const t1 = addTask(store, { title: "t1", stages: [{ name: "s", kind: "generic" }] });
+    const t2 = addTask(store, { title: "t2", stages: [{ name: "s", kind: "generic" }] });
+    store.savePlan(
+      { plan_date: today, trigger: "manual", narrative: "", model: "m" },
+      [
+        planItem(t0.task.id, t0.stages[0].id, 0, 0),
+        planItem(t1.task.id, t1.stages[0].id, 0, 1),
+        planItem(t2.task.id, t2.stages[0].id, 0, 2),
+      ],
+    );
+    const cfg = { ...DEFAULT_CONFIG, dailyTaskCapacity: 1 }; // one task per day
+    const boom = async () => {
+      throw new Error("llm down");
+    };
+    const n = await redateCurrentPlan(store, cfg, undefined, boom);
+    expect(n).toBe(3);
+    expect(store.getTask(t0.task.id)!.due).toBe(today);
+    expect(store.getTask(t1.task.id)!.due).toBe(addDaysLocal(today, 1));
+    expect(store.getTask(t2.task.id)!.due).toBe(addDaysLocal(today, 2));
   });
 });

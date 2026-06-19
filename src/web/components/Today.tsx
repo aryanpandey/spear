@@ -214,14 +214,13 @@ export function Today({
 }: {
   data: TodayData;
   onChange: () => void;
-  redate?: { done: number; total: number } | null;
+  redate?: boolean;
   onOpen: (id: number) => void;
 }) {
+  const [query, setQuery] = useState("");
   if (!data.plan) {
     return <div className="empty">No current plan. Run <code>spear plan</code> to generate today's execution flow.</div>;
   }
-  const pct = redate && redate.total ? Math.round((redate.done / redate.total) * 100) : 0;
-  const [query, setQuery] = useState("");
   const results = rankTasks(
     data.lanes.flatMap((l) => l.items),
     query,
@@ -239,16 +238,16 @@ export function Today({
           <button
             className="redate-btn"
             disabled={!!redate}
-            title="Re-decide every task's completion date from the current lane order (keeps lane order)"
+            title="Re-decide every task's completion date globally by your tasks/day capacity"
             onClick={() => void replanDates()}
           >
             ⟳ replan dates
           </button>
         </div>
         {redate && (
-          <div className="redate-progress" title="re-deciding completion dates">
-            <div className="redate-fill" style={{ width: `${pct}%` }} />
-            <span className="redate-label">re-dating lanes… {redate.done}/{redate.total} ({pct}%)</span>
+          <div className="redate-progress redate-indeterminate" title="re-deciding completion dates">
+            <div className="redate-fill" />
+            <span className="redate-label">⟳ re-dating…</span>
           </div>
         )}
         {data.plan.narrative}

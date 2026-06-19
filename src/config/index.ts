@@ -21,6 +21,8 @@ export interface SpearConfig {
   defaultPriority: Priority;
   /** Maximum number of lanes in the execution flow; extra themes are folded in. */
   maxLanes: number;
+  /** Tasks finished per day when re-dating; 0 = auto (= maxLanes). A "large" task counts as 2. */
+  dailyTaskCapacity: number;
   /** Active UI theme. */
   theme: "matrix" | "dark" | "light";
   /** Debounce window (ms) before an ad-hoc change triggers an LLM re-plan refine. */
@@ -34,6 +36,7 @@ export const DEFAULT_CONFIG: SpearConfig = {
   effort: { breakdown: "low", planner: "medium", duplicate: "low", dates: "medium" },
   defaultPriority: "medium",
   maxLanes: 6,
+  dailyTaskCapacity: 0,
   theme: "matrix",
   replanDebounceMs: 4000,
 };

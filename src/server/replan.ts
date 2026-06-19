@@ -44,15 +44,14 @@ export class Replanner {
   }
 
   private async redate(): Promise<void> {
-    this.hub.broadcast({ type: "redate", phase: "start", done: 0, total: 0 });
+    // One global LLM call now — no per-lane sub-steps, so this is just start/end.
+    this.hub.broadcast({ type: "redate", phase: "start" });
     try {
-      await redateCurrentPlan(this.store, this.cfg, (done, total) =>
-        this.hub.broadcast({ type: "redate", phase: "progress", done, total }),
-      );
+      await redateCurrentPlan(this.store, this.cfg);
     } catch (err) {
       process.stderr.write(`spear: redate failed (${err instanceof Error ? err.message : String(err)})\n`);
     }
-    this.hub.broadcast({ type: "redate", phase: "end", done: 0, total: 0 });
+    this.hub.broadcast({ type: "redate", phase: "end" });
     this.hub.broadcast({ type: "update", source: "refresh" });
   }
 

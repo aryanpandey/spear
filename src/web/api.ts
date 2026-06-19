@@ -189,9 +189,20 @@ export async function createTasksFromSeeds(
   return r.json();
 }
 
-export async function fetchConfig(): Promise<{ maxLanes: number; theme: string }> {
+export async function fetchConfig(): Promise<{ maxLanes: number; theme: string; dailyTaskCapacity: number }> {
   const r = await fetch("/api/config");
   if (!r.ok) throw new Error(`config ${r.status}`);
+  return r.json();
+}
+
+/** Set the daily task capacity used when re-dating (0 = auto = lane count). Re-dates. */
+export async function setCapacity(capacity: number): Promise<{ dailyTaskCapacity: number }> {
+  const r = await fetch("/api/config/capacity", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ capacity }),
+  });
+  if (!r.ok) throw new Error(`capacity ${r.status}`);
   return r.json();
 }
 
@@ -217,7 +228,7 @@ export async function setMaxLanes(lanes: number): Promise<{ maxLanes: number }> 
   return r.json();
 }
 
-/** Re-decide completion dates on the current lanes (server runs per-lane LLM calls). */
+/** Re-decide every task's completion date globally by the configured tasks/day capacity. */
 export async function replanDates(): Promise<void> {
   const r = await fetch("/api/plan/replan-dates", { method: "POST" });
   if (!r.ok) throw new Error(`replan-dates ${r.status}`);
