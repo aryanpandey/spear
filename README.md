@@ -97,7 +97,9 @@ live over SSE; with no server running, the plan is refreshed inline so `today`/`
 tabs, all live over SSE:
 
 - **Today** — the generated execution flow: parallel lanes (count configurable from the header),
-  each lane's next step flagged ▶ now, delegatable steps marked, overdue / due-today badges. The
+  each lane's next step flagged ▶ now, delegatable steps marked, overdue / due-today badges. Each
+  card is one **step** of a task; **▶ start / ✓ done act on that step alone**, so a multi-step
+  task's stages advance independently (completing a step removes just that card). The
   **add bar** on top turns plain English — **or a pasted image** — into one or more tasks:
   - splits a multi-task capture (or a screenshot of a list) into separate flows;
   - an **auto / task / feature** toggle (feature → full Planning → Implementation → Testing);

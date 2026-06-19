@@ -1,7 +1,6 @@
 import { useState } from "react";
 import {
-  setTaskStatus,
-  completeTask,
+  setStageStatus,
   deleteTask,
   setTaskDue,
   setTaskPriority,
@@ -145,17 +144,18 @@ function Item({ item, onChange, onOpen }: { item: TodayItem; onChange: () => voi
       onChange();
     }
   };
-  const inProgress = item.task.status === "in_progress";
+  // Each Today card is one stage; start/done act on THIS stage, independently of its siblings.
+  const stageInProgress = item.stage.status === "in_progress";
   return (
     <div
-      className={`card item ${item.scheduled_state}${inProgress ? " in-progress" : ""}`}
+      className={`card item ${item.scheduled_state}${stageInProgress ? " in-progress" : ""}`}
       onClick={(e) => {
         if (!(e.target as HTMLElement).closest("button, input, select, textarea, a")) onOpen(item.task.id);
       }}
     >
       <div className="cardrow">
         <span className={`sched ${item.scheduled_state}`}>{SCHED_LABEL[item.scheduled_state]}</span>
-        {inProgress && <span className="badge in-progress">⟳ in progress</span>}
+        {stageInProgress && <span className="badge in-progress">⟳ in progress</span>}
         <PriorityEditor item={item} onChange={onChange} />
         <DueEditor item={item} onChange={onChange} />
         {item.is_delegation_candidate && <span className="badge delegate">⇄ delegate</span>}
@@ -167,12 +167,12 @@ function Item({ item, onChange, onOpen }: { item: TodayItem; onChange: () => voi
       <div className="muted" style={{ fontSize: 11 }}>#{item.task.id}</div>
       {item.rationale && <div className="why">{item.rationale}</div>}
       <div className="task-actions">
-        {item.task.status !== "in_progress" && (
-          <button className="task-act" title="Mark task in progress" onClick={run(() => setTaskStatus(item.task.id, "in_progress"))}>
+        {!stageInProgress && (
+          <button className="task-act" title="Mark this step in progress" onClick={run(() => setStageStatus(item.stage.id, "in_progress"))}>
             ▶ start
           </button>
         )}
-        <button className="task-act done" title="Complete the whole task" onClick={run(() => completeTask(item.task.id))}>
+        <button className="task-act done" title="Complete this step" onClick={run(() => setStageStatus(item.stage.id, "done"))}>
           ✓ done
         </button>
         <button

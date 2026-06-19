@@ -115,6 +115,7 @@ export function todayDto(store: Store): TodayDto {
     const stage = store.getStage(it.stage_id);
     if (!task || !stage) continue;
     if (task.status === "done") continue; // completed work leaves the lanes (no re-plan needed)
+    if (stage.status === "done" || stage.status === "skipped") continue; // a finished step leaves too
     if (!laneMap.has(it.lane)) {
       laneMap.set(it.lane, []);
       laneExec.set(it.lane, it.executor_id);

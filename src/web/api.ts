@@ -276,6 +276,16 @@ export async function setTaskStatus(id: number, status: TaskStatus): Promise<voi
   if (!r.ok) throw new Error(`status ${r.status}`);
 }
 
+/** Set one stage's status independently (per-stage start/done on Today). */
+export async function setStageStatus(stageId: number, status: StageStatus): Promise<void> {
+  const r = await fetch(`/api/stages/${stageId}/status`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  });
+  if (!r.ok) throw new Error(`stage status ${r.status}`);
+}
+
 /** Change a task's priority; server refreshes (does not re-plan). */
 export async function setTaskPriority(id: number, priority: Priority): Promise<void> {
   const r = await fetch(`/api/tasks/${id}/priority`, {

@@ -1,5 +1,5 @@
 import type { Store } from "./db/store.js";
-import type { Priority, Stage, Task, TaskStatus, TaskType } from "./types.js";
+import type { Priority, Stage, StageStatus, Task, TaskStatus, TaskType } from "./types.js";
 import { genericStage, type StageSpec } from "./breakdown/standard.js";
 import { parseDueInput } from "./util/time.js";
 
@@ -118,14 +118,23 @@ export function completeTask(store: Store, taskId: number): Task {
   return store.getTask(taskId)!;
 }
 
-/** Complete a specific stage, then resettle its task. */
-export function completeStage(store: Store, stageId: number): Stage {
+/**
+ * Set a single stage's status independently of its siblings, then resettle the
+ * task's rollup status + its dependents. This is what the Today cards use so each
+ * stage of a multi-stage task starts/completes on its own.
+ */
+export function setStageStatus(store: Store, stageId: number, status: StageStatus): Stage {
   const stage = store.getStage(stageId);
   if (!stage) throw new Error(`stage ${stageId} not found`);
-  store.updateStage(stageId, { status: "done" });
+  store.updateStage(stageId, { status });
   recomputeTaskStatus(store, stage.task_id);
   resettleDependents(store, stage.task_id);
   return store.getStage(stageId)!;
+}
+
+/** Complete a specific stage, then resettle its task. */
+export function completeStage(store: Store, stageId: number): Stage {
+  return setStageStatus(store, stageId, "done");
 }
 
 /**

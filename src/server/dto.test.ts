@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { openDb } from "../db/index.js";
 import { Store } from "../db/store.js";
-import { addTask, blockTask, completeTask } from "../service.js";
+import { addTask, blockTask, completeTask, setStageStatus } from "../service.js";
 import { DEFAULT_CONFIG } from "../config/index.js";
 import { buildAndSavePlan } from "../planner/build.js";
 import { boardDto, todayDto } from "./dto.js";
@@ -81,6 +81,43 @@ describe("todayDto", () => {
 
     completeTask(store, task.id);
     expect(todayDto(store).lanes.flatMap((l) => l.items)).toHaveLength(0); // gone once done
+  });
+
+  it("treats each stage independently: a started stage shows in_progress, a finished one drops out", async () => {
+    const store = freshStore();
+    const { task, stages } = addTask(store, {
+      title: "Feature",
+      stages: [
+        { name: "Plan", kind: "planning" },
+        { name: "Impl", kind: "implementation" },
+        { name: "Test", kind: "testing" },
+      ],
+    });
+    const exec = store.listExecutors(true)[0];
+    const run = async () => ({
+      narrative: "n",
+      lanes: [
+        {
+          lane: 0,
+          executor_id: exec.id,
+          items: stages.map((s, i) => ({ task_id: task.id, stage_id: s.id, order: i, is_delegation_candidate: false, scheduled_state: "start_now", rationale: "r" })),
+        },
+      ],
+    });
+    await buildAndSavePlan(store, DEFAULT_CONFIG, "manual", run);
+    expect(todayDto(store).lanes.flatMap((l) => l.items)).toHaveLength(3); // all three stages shown
+
+    // Start the middle stage only — it reports in_progress; the others stay todo and all remain visible.
+    setStageStatus(store, stages[1].id, "in_progress");
+    let items = todayDto(store).lanes.flatMap((l) => l.items);
+    expect(items).toHaveLength(3);
+    expect(items.find((it) => it.stage.id === stages[1].id)!.stage.status).toBe("in_progress");
+    expect(items.find((it) => it.stage.id === stages[0].id)!.stage.status).toBe("todo");
+
+    // Finish that one stage — only it leaves; the siblings stay.
+    setStageStatus(store, stages[1].id, "done");
+    items = todayDto(store).lanes.flatMap((l) => l.items);
+    expect(items.map((it) => it.stage.id).sort()).toEqual([stages[0].id, stages[2].id].sort());
   });
 
   it("includes the stored due-date suggestion on the item", async () => {

@@ -3,6 +3,15 @@
 All notable changes to spear. Format loosely follows [Keep a Changelog](https://keepachangelog.com);
 versions are the `vX.Y.Z` git tags that trigger a dmg/exe release.
 
+## [0.1.32] — 2026-06-19
+### Fixed
+- **Today start/done are now per-step, not per-task.** Each Today card is one *stage* of a task, but
+  **▶ start** / **✓ done** used to act on the whole task — so a feature's Planning / Implementation /
+  Testing cards all started or completed together. They now act on that stage alone (new
+  `POST /api/stages/:id/status`), so every step is independent. Completing a step removes just that
+  card; the task is marked done only once all its steps are. The in-progress highlight and the
+  lane "float to top" are per-step too.
+
 ## [0.1.31] — 2026-06-19
 ### Changed
 - **Replan dates is now global and capacity-based.** Instead of one LLM call per lane assuming

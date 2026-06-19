@@ -12,10 +12,10 @@ import { intakeTasks, extractSeedsForIntake, createTasksFromSeeds, mimeExt, type
 import { checkSeedsForDuplicates } from "./duplicateCheck.js";
 import type { TaskSeed } from "../llm/intake.js";
 import { coerceTheme, THEMES } from "../util/theme.js";
-import { addTask, advanceTask, completeTask, removeTask, setTaskDue, setTaskPriority, setTaskStatus, setTaskTitle, setTaskDescription } from "../service.js";
+import { addTask, advanceTask, completeTask, removeTask, setStageStatus, setTaskDue, setTaskPriority, setTaskStatus, setTaskTitle, setTaskDescription } from "../service.js";
 import { attachmentsDir } from "../paths.js";
 import { breakdownForAdd } from "../breakdown/index.js";
-import { PRIORITIES, TASK_STATUSES, TASK_TYPES, type Priority, type TaskStatus, type TaskType } from "../types.js";
+import { PRIORITIES, STAGE_STATUSES, TASK_STATUSES, TASK_TYPES, type Priority, type StageStatus, type TaskStatus, type TaskType } from "../types.js";
 import { GOAL_STATUSES, type GoalStatus } from "../types.js";
 import { boardDto, todayDto, taskDetailDto } from "./dto.js";
 import { goalsPageDto, scorecardDto } from "./goalsDto.js";
@@ -319,6 +319,23 @@ export function buildServer(store: Store, cfg: SpearConfig): SpearServer {
     const task = setTaskStatus(store, Number(req.params.id), status);
     hub.broadcast({ type: "update", source: "refresh" }); // status change — no re-plan
     return { task };
+  });
+
+  // Per-stage start/done — each stage of a multi-stage task is independent.
+  app.post<{ Params: { id: string }; Body: { status?: string } }>("/api/stages/:id/status", async (req, reply) => {
+    const status = req.body?.status as StageStatus;
+    if (!STAGE_STATUSES.includes(status)) {
+      reply.code(400);
+      return { error: "invalid stage status" };
+    }
+    const id = Number(req.params.id);
+    if (!store.getStage(id)) {
+      reply.code(404);
+      return { error: "not found" };
+    }
+    const stage = setStageStatus(store, id, status);
+    hub.broadcast({ type: "update", source: "refresh" }); // stage progress — no re-plan
+    return { stage };
   });
 
   app.post<{ Params: { id: string }; Body: { priority?: string } }>("/api/tasks/:id/priority", async (req, reply) => {

@@ -11,6 +11,7 @@ import {
   openDependencies,
   recomputeTaskStatus,
   removeTask,
+  setStageStatus,
   setTaskDescription,
   setTaskDue,
   setTaskPriority,
@@ -115,6 +116,33 @@ describe("service flow advance + status rollup", () => {
     completeStage(store, stages[0].id);
     expect(store.getStages(task.id)[0].status).toBe("done");
     expect(store.getTask(task.id)!.status).toBe("in_progress");
+  });
+
+  it("setStageStatus moves one stage independently, leaving its siblings untouched", () => {
+    const { task, stages } = addTask(store, {
+      title: "Feature",
+      stages: [
+        { name: "Planning", kind: "planning" },
+        { name: "Implementation", kind: "implementation" },
+        { name: "Testing", kind: "testing" },
+      ],
+    });
+    // Start the SECOND stage only — the others stay todo, the task rolls up to in_progress.
+    setStageStatus(store, stages[1].id, "in_progress");
+    let s = store.getStages(task.id);
+    expect(s.map((x) => x.status)).toEqual(["todo", "in_progress", "todo"]);
+    expect(store.getTask(task.id)!.status).toBe("in_progress");
+
+    // Finish that one stage — the task is still in progress (not all stages done).
+    setStageStatus(store, stages[1].id, "done");
+    s = store.getStages(task.id);
+    expect(s.map((x) => x.status)).toEqual(["todo", "done", "todo"]);
+    expect(store.getTask(task.id)!.status).toBe("in_progress");
+
+    // Finish the rest → task done.
+    setStageStatus(store, stages[0].id, "done");
+    setStageStatus(store, stages[2].id, "done");
+    expect(store.getTask(task.id)!.status).toBe("done");
   });
 
   it("setTaskStatus cannot un-complete a fully-done task (rapid start→done race)", () => {
