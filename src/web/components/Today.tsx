@@ -144,18 +144,21 @@ function Item({ item, onChange, onOpen }: { item: TodayItem; onChange: () => voi
       onChange();
     }
   };
-  // Each Today card is one stage; start/done act on THIS stage, independently of its siblings.
+  // The in-progress state is a TASK-level rollup (it's "being worked on" even when the
+  // step currently shown is still todo), so the badge/highlight key on the task. Start/done
+  // still act on THIS stage — `stageInProgress` only governs the per-step start button.
+  const inProgress = item.task.status === "in_progress";
   const stageInProgress = item.stage.status === "in_progress";
   return (
     <div
-      className={`card item ${item.scheduled_state}${stageInProgress ? " in-progress" : ""}`}
+      className={`card item ${item.scheduled_state}${inProgress ? " in-progress" : ""}`}
       onClick={(e) => {
         if (!(e.target as HTMLElement).closest("button, input, select, textarea, a")) onOpen(item.task.id);
       }}
     >
       <div className="cardrow">
         <span className={`sched ${item.scheduled_state}`}>{SCHED_LABEL[item.scheduled_state]}</span>
-        {stageInProgress && <span className="badge in-progress">⟳ in progress</span>}
+        {inProgress && <span className="badge in-progress">⟳ in progress</span>}
         <PriorityEditor item={item} onChange={onChange} />
         <DueEditor item={item} onChange={onChange} />
         {item.is_delegation_candidate && <span className="badge delegate">⇄ delegate</span>}

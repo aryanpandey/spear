@@ -3,6 +3,13 @@
 All notable changes to spear. Format loosely follows [Keep a Changelog](https://keepachangelog.com);
 versions are the `vX.Y.Z` git tags that trigger a dmg/exe release.
 
+## [0.1.34] — 2026-06-19
+### Fixed
+- **In-progress tasks show as in-progress on Today again.** v0.1.32 tied the "⟳ in progress" badge,
+  card highlight, and lane "float to top" to the current *step's* status — so a task that's in
+  progress (a rollup) but whose shown step is still todo looked idle and sank in its lane. These
+  cues are back at the **task** level; the per-step **▶ start / ✓ done** buttons stay independent.
+
 ## [0.1.33] — 2026-06-19
 ### Added
 - **Per-stage due dates.** Each stage (Planning / Implementation / Testing / Stage Testing) now

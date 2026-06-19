@@ -1,15 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { compareLaneItems, type LaneSortable } from "./laneSort.js";
 
-// `status` is the STAGE status (what the float keys on); the task is assumed open.
-const mk = (status: string, priority: string, due: string | null): LaneSortable => ({
-  task: { status: "todo", priority },
-  stage: { status },
-  due,
-});
+const mk = (status: string, priority: string, due: string | null): LaneSortable => ({ task: { status, priority }, due });
 
 describe("compareLaneItems", () => {
-  it("floats an in-progress stage to the top", () => {
+  it("floats an in-progress task to the top", () => {
     expect(compareLaneItems(mk("todo", "low", "2026-01-01"), mk("in_progress", "low", null))).toBeGreaterThan(0);
   });
   it("orders by due date (soonest first, undated last) among non-in-progress", () => {
