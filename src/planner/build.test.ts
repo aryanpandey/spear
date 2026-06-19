@@ -34,6 +34,32 @@ describe("buildAndSavePlan", () => {
     expect(items[0].scheduled_state).toBe("start_now");
   });
 
+  it("keeps a ready flow the LLM dropped (no vanishing tasks on re-plan)", async () => {
+    const store = freshStore();
+    const kept = addTask(store, { title: "Planned", stages: [{ name: "Impl", kind: "implementation" }] });
+    const dropped = addTask(store, { title: "In progress work", stages: [{ name: "Impl", kind: "implementation" }] });
+    store.updateTask(dropped.task.id, { status: "in_progress" });
+    const exec = store.listExecutors(true)[0];
+    // The LLM places only the first task, omitting the in-progress one.
+    const run = async () => ({
+      narrative: "n",
+      lanes: [
+        {
+          lane: 0,
+          executor_id: exec.id,
+          items: [{ task_id: kept.task.id, stage_id: kept.stages[0].id, order: 0, is_delegation_candidate: false, scheduled_state: "start_now", rationale: "r" }],
+        },
+      ],
+    });
+    const { plan } = await buildAndSavePlan(store, DEFAULT_CONFIG, "manual", run);
+    const items = store.getPlanItems(plan!.id);
+    const stageIds = items.map((it) => it.stage_id);
+    expect(stageIds).toContain(kept.stages[0].id);
+    expect(stageIds).toContain(dropped.stages[0].id); // backfilled, not lost
+    const backfilled = items.find((it) => it.stage_id === dropped.stages[0].id)!;
+    expect(backfilled.scheduled_state).toBe("start_now"); // its task is in_progress
+  });
+
   it("does not overwrite the current plan when the LLM fails", async () => {
     const store = freshStore();
     addTask(store, { title: "X", stages: [{ name: "s", kind: "generic" }] });

@@ -12,7 +12,7 @@ import { intakeTasks, extractSeedsForIntake, createTasksFromSeeds, mimeExt, type
 import { checkSeedsForDuplicates } from "./duplicateCheck.js";
 import type { TaskSeed } from "../llm/intake.js";
 import { coerceTheme, THEMES } from "../util/theme.js";
-import { addTask, advanceTask, completeTask, removeTask, setStageStatus, setTaskDue, setTaskPriority, setTaskStatus, setTaskTitle, setTaskDescription } from "../service.js";
+import { addTask, advanceTask, completeTask, removeTask, setStageDue, setStageStatus, setTaskDue, setTaskPriority, setTaskStatus, setTaskTitle, setTaskDescription } from "../service.js";
 import { attachmentsDir } from "../paths.js";
 import { breakdownForAdd } from "../breakdown/index.js";
 import { PRIORITIES, STAGE_STATUSES, TASK_STATUSES, TASK_TYPES, type Priority, type StageStatus, type TaskStatus, type TaskType } from "../types.js";
@@ -336,6 +336,23 @@ export function buildServer(store: Store, cfg: SpearConfig): SpearServer {
     const stage = setStageStatus(store, id, status);
     hub.broadcast({ type: "update", source: "refresh" }); // stage progress — no re-plan
     return { stage };
+  });
+
+  // Per-stage completion date — each stage of a task can sit on its own day.
+  app.post<{ Params: { id: string }; Body: { due?: string | null } }>("/api/stages/:id/due", async (req, reply) => {
+    const id = Number(req.params.id);
+    if (!store.getStage(id)) {
+      reply.code(404);
+      return { error: "not found" };
+    }
+    try {
+      const stage = setStageDue(store, id, req.body?.due ?? "clear");
+      hub.broadcast({ type: "update", source: "refresh" }); // date change — no re-plan
+      return { stage };
+    } catch (err) {
+      reply.code(400);
+      return { error: err instanceof Error ? err.message : "invalid date" };
+    }
   });
 
   app.post<{ Params: { id: string }; Body: { priority?: string } }>("/api/tasks/:id/priority", async (req, reply) => {

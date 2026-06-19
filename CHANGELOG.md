@@ -3,6 +3,22 @@
 All notable changes to spear. Format loosely follows [Keep a Changelog](https://keepachangelog.com);
 versions are the `vX.Y.Z` git tags that trigger a dmg/exe release.
 
+## [0.1.33] — 2026-06-19
+### Added
+- **Per-stage due dates.** Each stage (Planning / Implementation / Testing / Stage Testing) now
+  carries its **own** date instead of all sharing one task date. "Replan dates" schedules every
+  stage (effort-weighted, capacity-packed, kept in sequence within a task); the Today due chip
+  edits that stage's date; and the **Week** calendar places each stage on its own day (drag a step
+  to set/clear its date). A task's overall date auto-derives from its latest stage, so the Board
+  and overdue badges keep working.
+### Fixed
+- **Tasks no longer vanish when you reduce the lane count.** The LLM planner could silently drop
+  flows when folding them into fewer lanes; re-planning now backfills any ready or in-progress flow
+  it omitted, so nothing leaves the board.
+### Changed
+- **More than 6 lanes fill the screen width.** Beyond six lanes the Today lane view shrinks the
+  lanes to share the full viewport width instead of scrolling horizontally.
+
 ## [0.1.32] — 2026-06-19
 ### Fixed
 - **Today start/done are now per-step, not per-task.** Each Today card is one *stage* of a task, but

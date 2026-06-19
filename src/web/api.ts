@@ -29,6 +29,7 @@ export interface BoardStage {
   seq: number;
   status: StageStatus;
   effort: string | null;
+  due: string | null;
   delegatable_to: ExecutorKind[];
 }
 
@@ -78,7 +79,7 @@ export interface TodayItem {
   dueBand: DueBand;
   multiStage: boolean;
   task: { id: number; title: string; priority: Priority; type: TaskType; status: TaskStatus; description: string };
-  stage: { id: number; name: string; kind: StageKind; status: StageStatus; effort: string | null };
+  stage: { id: number; name: string; kind: StageKind; status: StageStatus; effort: string | null; due: string | null };
 }
 
 export interface TodayLane {
@@ -314,6 +315,16 @@ export async function setTaskDue(id: number, due: string | null): Promise<void> 
     body: JSON.stringify({ due }),
   });
   if (!r.ok) throw new Error(`due ${r.status}`);
+}
+
+/** Set (`YYYY-MM-DD`) or clear (`null`) a single stage's date; server refreshes (no re-plan). */
+export async function setStageDue(stageId: number, due: string | null): Promise<void> {
+  const r = await fetch(`/api/stages/${stageId}/due`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ due }),
+  });
+  if (!r.ok) throw new Error(`stage due ${r.status}`);
 }
 
 export async function completeTask(id: number): Promise<void> {

@@ -72,6 +72,8 @@ export interface Stage {
   seq: number;
   status: StageStatus;
   effort: Effort | null;
+  /** Per-stage completion date (YYYY-MM-DD). The task's `due` derives from its stages. */
+  due: string | null;
   delegatable_to: ExecutorKind[];
 }
 

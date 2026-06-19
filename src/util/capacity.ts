@@ -20,31 +20,32 @@ export function effectiveCapacity(dailyTaskCapacity: number, maxLanes: number): 
   return Math.max(1, Math.floor(n));
 }
 
-export interface DatableTask {
-  task_id: number;
+export interface DatableUnit {
+  /** Stable id used as the map key (a task id or a stage id). */
+  id: number;
   effort: Effort | null;
 }
 
 /**
- * Deterministic capacity-based schedule: walk the tasks in their given (priority)
- * order, packing `capacity` slots per day; each task is due on the day its first
- * slot falls. So with capacity 2 and four 1-slot tasks the due-day offsets are
- * [0, 0, 1, 1]; a leading `large` task (2 slots) fills its day alone.
+ * Deterministic capacity-based schedule: walk the units in their given (priority)
+ * order, packing `capacity` slots per day; each unit is due on the day its first
+ * slot falls. So with capacity 2 and four 1-slot units the due-day offsets are
+ * [0, 0, 1, 1]; a leading `large` unit (2 slots) fills its day alone.
  *
- * Returns a Map of task_id → YYYY-MM-DD. Dates are non-decreasing by construction.
+ * Returns a Map of id → YYYY-MM-DD. Dates are non-decreasing by construction.
  */
 export function deterministicDates(
-  tasks: DatableTask[],
+  units: DatableUnit[],
   capacity: number,
   today: string,
 ): Map<number, string> {
   const cap = Math.max(1, Math.floor(capacity));
   const out = new Map<number, string>();
   let usedBefore = 0;
-  for (const t of tasks) {
+  for (const u of units) {
     const dayIndex = Math.floor(usedBefore / cap);
-    out.set(t.task_id, addDaysLocal(today, dayIndex));
-    usedBefore += effortSlots(t.effort);
+    out.set(u.id, addDaysLocal(today, dayIndex));
+    usedBefore += effortSlots(u.effort);
   }
   return out;
 }

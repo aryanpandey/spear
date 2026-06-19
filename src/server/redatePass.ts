@@ -1,25 +1,27 @@
 import type { Store } from "../db/store.js";
 import type { SpearConfig } from "../config/index.js";
 import { todayLocal, parseDateLocal } from "../util/time.js";
-import { replanDatesGlobal, type TaskForDating } from "../llm/replanDates.js";
+import { replanDatesGlobal, type StageForDating } from "../llm/replanDates.js";
 import { claudeJson, type ClaudeRunner } from "../llm/cli.js";
 import { effectiveCapacity, deterministicDates } from "../util/capacity.js";
+import { syncTaskDueFromStages } from "../service.js";
 import { PRIORITY_RANK } from "../types.js";
 
 export type RedateProgress = (done: number, total: number) => void;
 
-interface OrderedTask extends TaskForDating {
+interface OrderedStage extends StageForDating {
   lane: number;
   order_in_lane: number;
 }
 
 /**
- * Re-decide a completion date for every open task in the current plan with a single
- * global LLM call that respects the configured daily task capacity (default = lane
- * count; a "large" task counts as two). Ordering is global by priority — lane number
- * only breaks ties — so any lane reordering is absorbed. Falls back to a deterministic
- * capacity-packed schedule for the whole set (or any task the model omits), and clamps
- * the final dates non-decreasing in priority order. Writes `due` directly (no re-plan).
+ * Re-decide a completion date for every open STAGE in the current plan with a single
+ * global LLM call that respects the configured daily capacity (default = lane count;
+ * a "large" step counts as two). Stages are ordered globally by their task's priority,
+ * then kept in sequence within each task, so a task's steps stay non-decreasing while
+ * higher-priority work lands sooner — robust to lane reordering. Falls back to a
+ * deterministic capacity-packed schedule (per stage), clamps non-decreasing, writes each
+ * stage's `due`, then re-derives each task's `due` from its stages. Returns stages dated.
  */
 export async function redateCurrentPlan(
   store: Store,
@@ -32,63 +34,73 @@ export async function redateCurrentPlan(
   const today = todayLocal();
   const items = store.getPlanItems(plan.id); // ordered by lane, order_in_lane
 
-  // One entry per open task, remembering its current plan position for a stable tiebreak.
+  // One entry per open stage (a plan item is a (task, stage)), remembering plan position.
   const seen = new Set<number>();
-  const tasks: OrderedTask[] = [];
+  const stages: OrderedStage[] = [];
   for (const it of items) {
-    if (seen.has(it.task_id)) continue;
+    if (seen.has(it.stage_id)) continue;
     const task = store.getTask(it.task_id);
-    if (!task || task.status === "done") continue;
-    seen.add(it.task_id);
-    tasks.push({
+    const stage = store.getStage(it.stage_id);
+    if (!task || !stage) continue;
+    if (task.status === "done") continue;
+    if (stage.status === "done" || stage.status === "skipped") continue; // finished steps keep their date
+    seen.add(it.stage_id);
+    stages.push({
+      stage_id: stage.id,
       task_id: task.id,
-      title: task.title,
+      task_title: task.title,
+      stage_name: stage.name,
       type: task.type,
       priority: task.priority,
-      effort: task.effort,
+      effort: stage.effort,
+      seq: stage.seq,
       lane: it.lane,
       order_in_lane: it.order_in_lane,
     });
   }
-  if (tasks.length === 0) {
+  if (stages.length === 0) {
     onProgress?.(1, 1);
     return 0;
   }
 
-  // Global order: priority first, then current plan position (lane, order) as a stable tiebreak.
-  tasks.sort(
+  // Global order: task priority, then keep a task's stages together and in sequence.
+  stages.sort(
     (a, b) =>
       PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority] ||
       a.lane - b.lane ||
-      a.order_in_lane - b.order_in_lane,
+      a.task_id - b.task_id ||
+      a.seq - b.seq,
   );
 
   const capacity = effectiveCapacity(cfg.dailyTaskCapacity, cfg.maxLanes);
   onProgress?.(0, 1);
 
-  let assignments: { taskId: number; date: string }[] = [];
+  let assignments: { stageId: number; date: string }[] = [];
   try {
-    assignments = await replanDatesGlobal(today, tasks, capacity, { model: cfg.models.dates, effort: cfg.effort.dates }, run);
+    assignments = await replanDatesGlobal(today, stages, capacity, { model: cfg.models.dates, effort: cfg.effort.dates }, run);
   } catch {
     assignments = []; // best-effort: fall back to the deterministic schedule below
   }
-  const byId = new Map<number, string>(assignments.map((a) => [a.taskId, a.date]));
-  const fallback = deterministicDates(tasks, capacity, today);
+  const byId = new Map<number, string>(assignments.map((a) => [a.stageId, a.date]));
+  const fallback = deterministicDates(stages.map((s) => ({ id: s.stage_id, effort: s.effort })), capacity, today);
 
   let prev: string | null = null;
   let dated = 0;
-  for (const t of tasks) {
-    // Prefer the model's date when present; otherwise the deterministic capacity schedule.
-    let date: string = byId.get(t.task_id) ?? fallback.get(t.task_id) ?? today;
+  const touchedTasks = new Set<number>();
+  for (const s of stages) {
+    let date: string = byId.get(s.stage_id) ?? fallback.get(s.stage_id) ?? today;
     if (prev) {
       const a = parseDateLocal(date);
       const b = parseDateLocal(prev);
       if (a && b && a.getTime() < b.getTime()) date = prev; // clamp non-decreasing
     }
-    store.updateTask(t.task_id, { due: date });
+    store.updateStage(s.stage_id, { due: date });
+    touchedTasks.add(s.task_id);
     prev = date;
     dated += 1;
   }
+  for (const taskId of touchedTasks) syncTaskDueFromStages(store, taskId);
+
   onProgress?.(1, 1);
   return dated;
 }

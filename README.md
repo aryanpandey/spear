@@ -99,7 +99,8 @@ tabs, all live over SSE:
 - **Today** — the generated execution flow: parallel lanes (count configurable from the header),
   each lane's next step flagged ▶ now, delegatable steps marked, overdue / due-today badges. Each
   card is one **step** of a task; **▶ start / ✓ done act on that step alone**, so a multi-step
-  task's stages advance independently (completing a step removes just that card). The
+  task's stages advance independently (completing a step removes just that card). Each step also
+  carries **its own date** (the task's overall date is its latest step). The
   **add bar** on top turns plain English — **or a pasted image** — into one or more tasks:
   - splits a multi-task capture (or a screenshot of a list) into separate flows;
   - an **auto / task / feature** toggle (feature → full Planning → Implementation → Testing);
@@ -113,7 +114,8 @@ tabs, all live over SSE:
 - **Board** — tasks by status (Backlog · To Do · In Progress · Blocked · Done) with stage
   progress and blockers, plus quick actions **▶ start** / **✓ done** / **✕** and click-to-edit
   priority.
-- **Week** — a running Mon→Sun calendar bucketed by deadline, with drag-and-drop rescheduling.
+- **Week** — a running Mon→Sun calendar with each **step** placed on its own day; drag a step onto
+  a day to set its date, or onto Unscheduled to clear it.
 - **Goals** — weekly goals in two sub-tabs:
   - **List** — a simple, free-form goal list (add / inline-edit / tick off / delete).
   - **Scorecard** — a weekly-focus card of weighted metrics

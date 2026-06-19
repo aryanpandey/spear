@@ -26,4 +26,6 @@ function migrate(db: DB): void {
   if (!cols.includes("lane")) db.exec("ALTER TABLE tasks ADD COLUMN lane INTEGER");
   if (!cols.includes("suggested_due")) db.exec("ALTER TABLE tasks ADD COLUMN suggested_due TEXT");
   if (!cols.includes("suggested_due_reason")) db.exec("ALTER TABLE tasks ADD COLUMN suggested_due_reason TEXT");
+  const stageCols = (db.prepare("PRAGMA table_info(stages)").all() as { name: string }[]).map((r) => r.name);
+  if (!stageCols.includes("due")) db.exec("ALTER TABLE stages ADD COLUMN due TEXT");
 }

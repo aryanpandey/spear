@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS stages (
   seq INTEGER NOT NULL,
   status TEXT NOT NULL DEFAULT 'todo',
   effort TEXT,
+  due TEXT,
   delegatable_to TEXT NOT NULL DEFAULT '[]'
 );
 CREATE INDEX IF NOT EXISTS idx_stages_task ON stages(task_id);

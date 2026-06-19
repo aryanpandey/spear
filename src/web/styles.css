@@ -265,6 +265,9 @@ main { padding: 18px 20px 40px; flex: 1; }
 
 .lanes { display: flex; gap: 14px; align-items: flex-start; overflow-x: auto; }
 .lane { min-width: 270px; max-width: 320px; flex: 1; }
+/* >6 lanes: shrink to share the full viewport width instead of horizontal scroll. */
+.lanes.fill { overflow-x: visible; }
+.lanes.fill .lane { min-width: 0; max-width: none; }
 .lane-head {
   display: flex;
   align-items: baseline;

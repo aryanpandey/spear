@@ -19,6 +19,7 @@ export interface BoardStageDto {
   seq: number;
   status: StageStatus;
   effort: Effort | null;
+  due: string | null;
   delegatable_to: ExecutorKind[];
 }
 
@@ -65,6 +66,7 @@ export function boardDto(store: Store): BoardDto {
         seq: s.seq,
         status: s.status,
         effort: s.effort,
+        due: s.due,
         delegatable_to: s.delegatable_to,
       })),
       blockedBy: store.blockedBy(t.id),
@@ -85,7 +87,7 @@ export interface TodayItemDto {
   /** Whether the task has more than one stage (so the stage name is a real sub-step worth showing). */
   multiStage: boolean;
   task: { id: number; title: string; priority: Priority; type: TaskType; status: TaskStatus; description: string };
-  stage: { id: number; name: string; kind: StageKind; status: StageStatus; effort: Effort | null };
+  stage: { id: number; name: string; kind: StageKind; status: StageStatus; effort: Effort | null; due: string | null };
 }
 
 export interface TodayLaneDto {
@@ -125,13 +127,15 @@ export function todayDto(store: Store): TodayDto {
       scheduled_state: it.scheduled_state,
       is_delegation_candidate: it.is_delegation_candidate,
       rationale: it.rationale,
-      due: task.due,
+      // The card represents one stage, so its date is the STAGE's date (the task's
+      // overall `due` derives from the latest stage).
+      due: stage.due,
       suggestedDue: task.suggested_due,
       suggestedDueReason: task.suggested_due_reason,
-      dueBand: dueBand(task.due, now),
+      dueBand: dueBand(stage.due, now),
       multiStage: store.getStages(task.id).length > 1,
       task: { id: task.id, title: task.title, priority: task.priority, type: task.type, status: task.status, description: task.description },
-      stage: { id: stage.id, name: stage.name, kind: stage.kind, status: stage.status, effort: stage.effort },
+      stage: { id: stage.id, name: stage.name, kind: stage.kind, status: stage.status, effort: stage.effort, due: stage.due },
     });
   }
 
@@ -205,6 +209,7 @@ export function taskDetailDto(store: Store, id: number): TaskDetailDto | null {
       seq: s.seq,
       status: s.status,
       effort: s.effort,
+      due: s.due,
       delegatable_to: s.delegatable_to,
     })),
     blockedBy: store.blockedBy(id),

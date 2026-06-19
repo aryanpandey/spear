@@ -28,7 +28,7 @@ describe("deterministicDates", () => {
   const today = "2026-06-19";
 
   it("packs `capacity` 1-slot tasks per day", () => {
-    const tasks = [1, 2, 3, 4].map((task_id) => ({ task_id, effort: "small" as const }));
+    const tasks = [1, 2, 3, 4].map((id) => ({ id, effort: "small" as const }));
     const m = deterministicDates(tasks, 2, today);
     expect(m.get(1)).toBe("2026-06-19");
     expect(m.get(2)).toBe("2026-06-19");
@@ -38,9 +38,9 @@ describe("deterministicDates", () => {
 
   it("a leading large task (2 slots) fills its day alone", () => {
     const tasks = [
-      { task_id: 1, effort: "large" as const },
-      { task_id: 2, effort: "small" as const },
-      { task_id: 3, effort: "small" as const },
+      { id: 1, effort: "large" as const },
+      { id: 2, effort: "small" as const },
+      { id: 3, effort: "small" as const },
     ];
     const m = deterministicDates(tasks, 2, today);
     expect(m.get(1)).toBe("2026-06-19"); // fills slots 0+1 → day 0
@@ -49,7 +49,7 @@ describe("deterministicDates", () => {
   });
 
   it("produces non-decreasing dates and coerces capacity to >= 1", () => {
-    const tasks = [1, 2, 3].map((task_id) => ({ task_id, effort: null }));
+    const tasks = [1, 2, 3].map((id) => ({ id, effort: null }));
     const m = deterministicDates(tasks, 0, today); // 0 coerced to 1 → one per day
     expect(m.get(1)).toBe("2026-06-19");
     expect(m.get(2)).toBe("2026-06-20");

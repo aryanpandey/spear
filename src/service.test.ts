@@ -11,6 +11,7 @@ import {
   openDependencies,
   recomputeTaskStatus,
   removeTask,
+  setStageDue,
   setStageStatus,
   setTaskDescription,
   setTaskDue,
@@ -180,6 +181,41 @@ describe("service flow advance + status rollup", () => {
     // b no longer has an open blocker → unblocked
     expect(openDependencies(store, b.id)).toEqual([]);
     expect(store.getTask(b.id)!.status).toBe("todo");
+  });
+});
+
+describe("service.setStageDue", () => {
+  let store: Store;
+  beforeEach(() => (store = freshStore()));
+
+  it("dates a stage and derives the task's due from the latest stage", () => {
+    const { task, stages } = addTask(store, {
+      title: "Feature",
+      stages: [
+        { name: "Plan", kind: "planning" },
+        { name: "Impl", kind: "implementation" },
+        { name: "Test", kind: "testing" },
+      ],
+    });
+    setStageDue(store, stages[0].id, "2026-06-20");
+    setStageDue(store, stages[2].id, "2026-06-25");
+    expect(store.getStages(task.id).map((s) => s.due)).toEqual(["2026-06-20", null, "2026-06-25"]);
+    expect(store.getTask(task.id)!.due).toBe("2026-06-25"); // latest stage
+
+    // A middle stage in between doesn't change the (still-latest) task due.
+    setStageDue(store, stages[1].id, "2026-06-22");
+    expect(store.getTask(task.id)!.due).toBe("2026-06-25");
+
+    // Clearing the latest stage re-derives the task due to the next latest.
+    setStageDue(store, stages[2].id, "clear");
+    expect(store.getStages(task.id)[2].due).toBeNull();
+    expect(store.getTask(task.id)!.due).toBe("2026-06-22");
+  });
+
+  it("throws on an unknown stage or an invalid date", () => {
+    const { stages } = addTask(store, { title: "t", stages: [{ name: "s", kind: "generic" }] });
+    expect(() => setStageDue(store, 9999, "today")).toThrow();
+    expect(() => setStageDue(store, stages[0].id, "whenever")).toThrow();
   });
 });
 

@@ -43,6 +43,7 @@ export interface NewStage {
   seq: number;
   status?: StageStatus;
   effort?: Effort | null;
+  due?: string | null;
   delegatable_to?: ExecutorKind[];
 }
 
@@ -219,8 +220,8 @@ export class Store {
   addStage(input: NewStage): Stage {
     const info = this.db
       .prepare(
-        `INSERT INTO stages (task_id, name, kind, seq, status, effort, delegatable_to)
-         VALUES (@task_id, @name, @kind, @seq, @status, @effort, @delegatable_to)`,
+        `INSERT INTO stages (task_id, name, kind, seq, status, effort, due, delegatable_to)
+         VALUES (@task_id, @name, @kind, @seq, @status, @effort, @due, @delegatable_to)`,
       )
       .run({
         task_id: input.task_id,
@@ -229,6 +230,7 @@ export class Store {
         seq: input.seq,
         status: input.status ?? "todo",
         effort: input.effort ?? null,
+        due: input.due ?? null,
         delegatable_to: JSON.stringify(input.delegatable_to ?? []),
       });
     return this.getStage(Number(info.lastInsertRowid))!;
@@ -276,7 +278,7 @@ export class Store {
     const merged = { ...current, ...patch };
     this.db
       .prepare(
-        `UPDATE stages SET name=@name, kind=@kind, seq=@seq, status=@status, effort=@effort, delegatable_to=@delegatable_to WHERE id=@id`,
+        `UPDATE stages SET name=@name, kind=@kind, seq=@seq, status=@status, effort=@effort, due=@due, delegatable_to=@delegatable_to WHERE id=@id`,
       )
       .run({
         name: merged.name,
@@ -284,6 +286,7 @@ export class Store {
         seq: merged.seq,
         status: merged.status,
         effort: merged.effort,
+        due: merged.due ?? null,
         delegatable_to: JSON.stringify(merged.delegatable_to),
         id,
       });
@@ -729,6 +732,7 @@ interface StageRow {
   seq: number;
   status: string;
   effort: string | null;
+  due: string | null;
   delegatable_to: string;
 }
 function mapStage(r: StageRow): Stage {
@@ -740,6 +744,7 @@ function mapStage(r: StageRow): Stage {
     seq: r.seq,
     status: r.status as StageStatus,
     effort: r.effort as Effort | null,
+    due: r.due ?? null,
     delegatable_to: safeJsonArray(r.delegatable_to) as ExecutorKind[],
   };
 }

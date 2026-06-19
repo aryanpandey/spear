@@ -149,6 +149,34 @@ export function setTaskDue(store: Store, taskId: number, dueInput: string): Task
   return store.getTask(taskId)!;
 }
 
+/**
+ * Derive a task's `due` from its stages: the latest (max) stage due, so the task
+ * date tracks its final step. If no stage carries a date, the task's own `due`
+ * (a manual/CLI deadline) is left untouched.
+ */
+export function syncTaskDueFromStages(store: Store, taskId: number): Task | undefined {
+  const task = store.getTask(taskId);
+  if (!task) return undefined;
+  const dues = store.getStages(taskId).map((s) => s.due).filter((d): d is string => !!d);
+  if (dues.length === 0) return task; // no stage dates → keep the task's own due
+  const max = dues.reduce((a, b) => (a >= b ? a : b));
+  if (max !== task.due) store.updateTask(taskId, { due: max });
+  return store.getTask(taskId)!;
+}
+
+/**
+ * Set (or clear) a single stage's completion date, then re-derive its task's due.
+ * `dueInput` accepts the same forms as `setTaskDue` (YYYY-MM-DD, +Nd, today, clear…).
+ */
+export function setStageDue(store: Store, stageId: number, dueInput: string): Stage {
+  const stage = store.getStage(stageId);
+  if (!stage) throw new Error(`stage ${stageId} not found`);
+  const due = parseDueInput(dueInput);
+  store.updateStage(stageId, { due });
+  syncTaskDueFromStages(store, stage.task_id);
+  return store.getStage(stageId)!;
+}
+
 /** Change a task's priority. */
 export function setTaskPriority(store: Store, taskId: number, priority: Priority): Task {
   if (!store.getTask(taskId)) throw new Error(`task ${taskId} not found`);

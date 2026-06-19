@@ -1,31 +1,62 @@
 import { useState, type DragEvent } from "react";
-import { setTaskDue, type BoardData, type BoardTask } from "../api";
-import { buildWeek } from "../../util/week";
+import { setStageDue, type BoardData } from "../api";
+import { buildWeek, type WeekTask } from "../../util/week";
 import { EditableTitle } from "./EditableTitle";
 
-/** A draggable Week chip with inline rename. Module-level so editing survives SSE refreshes. */
-function CalChip({ task, onChange, onOpen }: { task: BoardTask; onChange: () => void; onOpen: (id: number) => void }) {
+/** One stage of a task, as placed on the week by its own date. */
+interface WeekUnit extends WeekTask {
+  id: number; // stage id (the draggable unit + day bucket key)
+  taskId: number;
+  title: string;
+  stageName: string;
+  multi: boolean; // task has >1 stage, so the stage name is worth showing
+}
+
+/** Flatten the board's tasks into one draggable unit per stage. */
+function toUnits(data: BoardData): WeekUnit[] {
+  const units: WeekUnit[] = [];
+  for (const t of data.tasks) {
+    const multi = t.stages.length > 1;
+    for (const s of t.stages) {
+      units.push({
+        id: s.id,
+        taskId: t.id,
+        title: t.title,
+        stageName: s.name,
+        multi,
+        due: s.due,
+        status: s.status,
+        priority: t.priority,
+      });
+    }
+  }
+  return units;
+}
+
+/** A draggable Week chip (one stage) with inline task rename. */
+function CalChip({ unit, onChange, onOpen }: { unit: WeekUnit; onChange: () => void; onOpen: (id: number) => void }) {
   const [editing, setEditing] = useState(false);
   const drag = editing
     ? {}
     : {
         draggable: true,
         onDragStart: (e: DragEvent) => {
-          e.dataTransfer.setData("text/plain", String(task.id));
+          e.dataTransfer.setData("text/plain", String(unit.id));
           e.dataTransfer.effectAllowed = "move";
         },
       };
   return (
     <div
-      className={`cal-chip pri-${task.priority}${task.status === "done" ? " done" : ""}`}
-      title={task.title}
+      className={`cal-chip pri-${unit.priority}${unit.status === "done" ? " done" : ""}`}
+      title={unit.multi ? `${unit.title} · ${unit.stageName}` : unit.title}
       {...drag}
       onClick={(e) => {
-        if (!(e.target as HTMLElement).closest("button, input, select, textarea, a")) onOpen(task.id);
+        if (!(e.target as HTMLElement).closest("button, input, select, textarea, a")) onOpen(unit.taskId);
       }}
     >
-      <span className="muted">#{task.id}</span>{" "}
-      <EditableTitle id={task.id} title={task.title} onChange={onChange} onEditingChange={setEditing} />
+      <span className="muted">#{unit.taskId}</span>{" "}
+      <EditableTitle id={unit.taskId} title={unit.title} onChange={onChange} onEditingChange={setEditing} />
+      {unit.multi && <span className="muted"> · {unit.stageName}</span>}
     </div>
   );
 }
@@ -37,17 +68,17 @@ function fmtRange(start: string, end: string): string {
   return `${MONTHS[sm - 1]} ${sd} – ${MONTHS[em - 1]} ${ed}, ${sy}`;
 }
 
-// Calendar of the running (Mon→Sun) week. Tasks are bucketed by deadline; drag a
-// task onto a day to set its deadline, or onto Unscheduled to clear it. Every
-// drop hits the same /api/tasks/:id/due endpoint, so the server re-plans.
+// Calendar of the running (Mon→Sun) week. Each STAGE is bucketed by its own date;
+// drag a step onto a day to set that step's date, or onto Unscheduled to clear it.
+// Every drop hits /api/stages/:id/due (refresh, no re-plan).
 export function Calendar({ data, onChange, onOpen }: { data: BoardData; onChange: () => void; onOpen: (id: number) => void }) {
   const [over, setOver] = useState<string | null>(null);
   const [showUnsched, setShowUnsched] = useState(false);
-  const week = buildWeek(data.tasks, new Date());
+  const week = buildWeek(toUnits(data), new Date());
 
-  const move = async (id: number, due: string | null) => {
+  const move = async (stageId: number, due: string | null) => {
     try {
-      await setTaskDue(id, due);
+      await setStageDue(stageId, due);
     } finally {
       onChange();
     }
@@ -72,15 +103,15 @@ export function Calendar({ data, onChange, onOpen }: { data: BoardData; onChange
     <div className="week">
       <div className="week-head">
         ▦ Week · {fmtRange(week.weekStart, week.weekEnd)}{" "}
-        <span className="muted">— drag a task onto a day to set its deadline</span>
+        <span className="muted">— drag a step onto a day to set its date</span>
       </div>
 
       {week.overdue.length > 0 && (
         <div className="week-overdue">
           <div className="week-strip-head">⌛ Overdue ({week.overdue.length})</div>
           <div className="week-strip-body">
-            {week.overdue.map((t) => (
-              <CalChip key={t.id} task={t} onChange={onChange} onOpen={onOpen} />
+            {week.overdue.map((u) => (
+              <CalChip key={u.id} unit={u} onChange={onChange} onOpen={onOpen} />
             ))}
           </div>
         </div>
@@ -97,8 +128,8 @@ export function Calendar({ data, onChange, onOpen }: { data: BoardData; onChange
               {d.weekday} {d.dayNum}
               {d.isToday ? " ⋆" : ""}
             </div>
-            {d.tasks.map((t) => (
-              <CalChip key={t.id} task={t} onChange={onChange} onOpen={onOpen} />
+            {d.tasks.map((u) => (
+              <CalChip key={u.id} unit={u} onChange={onChange} onOpen={onOpen} />
             ))}
             {d.tasks.length === 0 && <div className="muted week-empty">—</div>}
           </div>
@@ -111,12 +142,12 @@ export function Calendar({ data, onChange, onOpen }: { data: BoardData; onChange
       >
         <button className="unsched-toggle" onClick={() => setShowUnsched((s) => !s)}>
           {showUnsched ? "▾" : "▸"} Unscheduled ({week.unscheduled.length})
-          <span className="muted"> — drop here to clear a deadline</span>
+          <span className="muted"> — drop here to clear a date</span>
         </button>
         {showUnsched && (
           <div className="unsched-body">
-            {week.unscheduled.map((t) => (
-              <CalChip key={t.id} task={t} onChange={onChange} onOpen={onOpen} />
+            {week.unscheduled.map((u) => (
+              <CalChip key={u.id} unit={u} onChange={onChange} onOpen={onOpen} />
             ))}
             {week.unscheduled.length === 0 && <div className="muted">none</div>}
           </div>

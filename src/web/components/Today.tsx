@@ -2,7 +2,7 @@ import { useState } from "react";
 import {
   setStageStatus,
   deleteTask,
-  setTaskDue,
+  setStageDue,
   setTaskPriority,
   replanDates,
   type Priority,
@@ -36,7 +36,7 @@ function DueEditor({ item, onChange }: { item: TodayItem; onChange: () => void }
   const [editing, setEditing] = useState(false);
   const apply = async (due: string | null) => {
     try {
-      await setTaskDue(item.task.id, due);
+      await setStageDue(item.stage.id, due);
     } finally {
       setEditing(false);
       onChange();
@@ -279,7 +279,7 @@ export function Today({
       ) : data.lanes.length === 0 ? (
         <div className="empty">inbox zero — no open work.</div>
       ) : (
-        <div className="lanes">
+        <div className={`lanes${data.lanes.length > 6 ? " fill" : ""}`}>
           {data.lanes.map((l, i) => (
             <Lane key={l.lane} lane={l} number={i + 1} onChange={onChange} onOpen={onOpen} />
           ))}
