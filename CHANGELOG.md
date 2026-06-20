@@ -3,6 +3,12 @@
 All notable changes to spear. Format loosely follows [Keep a Changelog](https://keepachangelog.com);
 versions are the `vX.Y.Z` git tags that trigger a dmg/exe release.
 
+## [0.1.36] — 2026-06-20
+### Changed
+- **Burndown chart is smaller and interactive.** It no longer stretches to the full window width
+  (capped at ~560px), and hovering a day shows a bubble with that day's date plus its open-remaining
+  and completed counts (the day's points enlarge and a guide line appears).
+
 ## [0.1.35] — 2026-06-20
 ### Added
 - **Metrics tab.** Tracks tasks **completed** and **added** for **today** and the running **Mon→Sun
