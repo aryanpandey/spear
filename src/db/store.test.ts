@@ -21,6 +21,20 @@ describe("Store", () => {
     expect(fetched?.title).toBe("Build feature X");
   });
 
+  it("stamps completed_at when a task enters done and clears it when reopened", () => {
+    const t = store.createTask({ title: "ship", type: "chore" });
+    expect(store.getTask(t.id)!.completed_at).toBeNull();
+    store.updateTask(t.id, { status: "done" });
+    const done = store.getTask(t.id)!;
+    expect(done.completed_at).not.toBeNull();
+    // A non-status edit preserves the completion stamp.
+    store.updateTask(t.id, { priority: "high" });
+    expect(store.getTask(t.id)!.completed_at).toBe(done.completed_at);
+    // Reopening clears it.
+    store.updateTask(t.id, { status: "in_progress" });
+    expect(store.getTask(t.id)!.completed_at).toBeNull();
+  });
+
   it("stores and parses stage JSON fields in seq order", () => {
     const t = store.createTask({ title: "F", type: "feature" });
     store.addStage({ task_id: t.id, name: "Implementation", kind: "implementation", seq: 1, delegatable_to: ["ai_agent", "self"] });

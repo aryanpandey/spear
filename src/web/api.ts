@@ -105,6 +105,29 @@ export async function fetchToday(): Promise<TodayData> {
   return r.json();
 }
 
+// ---- metrics tab (mirrors src/util/metrics.ts MetricsView) ----
+
+export interface MetricsDayPoint {
+  date: string;
+  weekday: string;
+  remaining: number;
+  completed: number;
+  isToday: boolean;
+  isFuture: boolean;
+}
+export interface MetricsData {
+  today: { date: string; added: number; completed: number };
+  week: { weekStart: string; weekEnd: string; added: number; completed: number };
+  totalOpen: number;
+  burndown: MetricsDayPoint[];
+}
+
+export async function fetchMetrics(): Promise<MetricsData> {
+  const r = await fetch("/api/metrics");
+  if (!r.ok) throw new Error(`metrics ${r.status}`);
+  return r.json();
+}
+
 // ---- task create / actions ----
 
 /**

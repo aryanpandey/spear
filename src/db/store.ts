@@ -174,14 +174,24 @@ export class Store {
     return rows.map(mapTask);
   }
 
+  /** Every task (including done) — used by the metrics tab. */
+  listAllTasks(): Task[] {
+    const rows = this.db.prepare("SELECT * FROM tasks ORDER BY id ASC").all() as TaskRow[];
+    return rows.map(mapTask);
+  }
+
   updateTask(id: number, patch: Partial<Omit<Task, "id" | "created_at">>): Task | undefined {
     const current = this.getTask(id);
     if (!current) return undefined;
     const merged = { ...current, ...patch, updated_at: nowIso() };
+    // Stamp a completion time when a task enters `done`; clear it if it's reopened.
+    if (merged.status === "done" && current.status !== "done") merged.completed_at = nowIso();
+    else if (merged.status !== "done" && current.status === "done") merged.completed_at = null;
     this.db
       .prepare(
         `UPDATE tasks SET title=@title, description=@description, type=@type, priority=@priority,
-         status=@status, effort=@effort, due=@due, source=@source, external_id=@external_id, updated_at=@updated_at
+         status=@status, effort=@effort, due=@due, completed_at=@completed_at, source=@source,
+         external_id=@external_id, updated_at=@updated_at
          WHERE id=@id`,
       )
       .run({ ...merged, id });
@@ -717,6 +727,7 @@ interface TaskRow {
   source: string;
   external_id: string | null;
   lane: number | null;
+  completed_at: string | null;
   created_at: string;
   updated_at: string;
 }

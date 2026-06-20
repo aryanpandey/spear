@@ -3,6 +3,13 @@
 All notable changes to spear. Format loosely follows [Keep a Changelog](https://keepachangelog.com);
 versions are the `vX.Y.Z` git tags that trigger a dmg/exe release.
 
+## [0.1.35] — 2026-06-20
+### Added
+- **Metrics tab.** Tracks tasks **completed** and **added** for **today** and the running **Mon→Sun
+  week**, plus a **weekly burndown** chart with two lines — open tasks remaining and cumulative
+  completed. Backed by a new `completed_at` timestamp (stamped when a task is finished, cleared if
+  reopened; existing done tasks are backfilled from their last-updated time).
+
 ## [0.1.34] — 2026-06-19
 ### Fixed
 - **In-progress tasks show as in-progress on Today again.** v0.1.32 tied the "⟳ in progress" badge,

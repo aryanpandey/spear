@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   due TEXT,
   suggested_due TEXT,
   suggested_due_reason TEXT,
+  completed_at TEXT,
   source TEXT NOT NULL DEFAULT 'cli',
   external_id TEXT UNIQUE,
   lane INTEGER,

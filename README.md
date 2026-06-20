@@ -116,6 +116,8 @@ tabs, all live over SSE:
   priority.
 - **Week** — a running Mon→Sun calendar with each **step** placed on its own day; drag a step onto
   a day to set its date, or onto Unscheduled to clear it.
+- **Metrics** — tasks **completed** and **added** today and this week, plus a **weekly burndown**
+  (open tasks remaining + cumulative completed).
 - **Goals** — weekly goals in two sub-tabs:
   - **List** — a simple, free-form goal list (add / inline-edit / tick off / delete).
   - **Scorecard** — a weekly-focus card of weighted metrics

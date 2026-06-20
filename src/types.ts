@@ -60,6 +60,8 @@ export interface Task {
   external_id: string | null;
   /** Persistent lane assignment (sticky across replans); null until first planned. */
   lane: number | null;
+  /** ISO timestamp when the task entered `done` (cleared if reopened); null otherwise. */
+  completed_at: string | null;
   created_at: string;
   updated_at: string;
 }

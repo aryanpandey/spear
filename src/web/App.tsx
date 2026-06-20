@@ -8,15 +8,17 @@ import { AddTask } from "./components/AddTask";
 import { DesktopButton } from "./components/DesktopButton";
 import { Logo } from "./components/Logo";
 import { TaskDetail } from "./components/TaskDetail";
-import { fetchBoard, fetchToday, fetchConfig, setMaxLanes, setCapacity, setTheme as persistTheme, type BoardData, type TodayData } from "./api";
+import { Metrics } from "./components/Metrics";
+import { fetchBoard, fetchToday, fetchMetrics, fetchConfig, setMaxLanes, setCapacity, setTheme as persistTheme, type BoardData, type TodayData, type MetricsData } from "./api";
 import { coerceTheme, THEMES, type Theme } from "../util/theme";
 
-type Tab = "today" | "board" | "week" | "goals";
+type Tab = "today" | "board" | "week" | "metrics" | "goals";
 
 export function App() {
   const [tab, setTab] = useState<Tab>("today");
   const [board, setBoard] = useState<BoardData | null>(null);
   const [today, setToday] = useState<TodayData | null>(null);
+  const [metrics, setMetrics] = useState<MetricsData | null>(null);
   const [updated, setUpdated] = useState<number | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -42,10 +44,11 @@ export function App() {
   const load = useCallback(async () => {
     const seq = ++loadSeq.current;
     try {
-      const [b, t] = await Promise.all([fetchBoard(), fetchToday()]);
+      const [b, t, m] = await Promise.all([fetchBoard(), fetchToday(), fetchMetrics()]);
       if (seq !== loadSeq.current) return; // a newer load() superseded this one — drop stale data
       setBoard(b);
       setToday(t);
+      setMetrics(m);
       setUpdated(Date.now());
       setErr(null);
     } catch (e) {
@@ -140,7 +143,7 @@ export function App() {
           spear<span className="caret">_</span>
         </span>
         <div className="tabs">
-          {(["today", "board", "week", "goals"] as Tab[]).map((tb) => (
+          {(["today", "board", "week", "metrics", "goals"] as Tab[]).map((tb) => (
             <button
               key={tb}
               className={`tab ${tab === tb && selectedTaskId == null ? "active" : ""}`}
@@ -220,8 +223,9 @@ export function App() {
             )}
             {tab === "board" && board && <Board data={board} onChange={load} onOpen={setSelectedTaskId} />}
             {tab === "week" && board && <Calendar data={board} onChange={load} onOpen={setSelectedTaskId} />}
+            {tab === "metrics" && <Metrics data={metrics} />}
             {tab === "goals" && <Goals />}
-            {tab !== "goals" && !board && !today && !err && <div className="empty">loading…</div>}
+            {tab !== "goals" && tab !== "metrics" && !board && !today && !err && <div className="empty">loading…</div>}
           </>
         )}
       </main>

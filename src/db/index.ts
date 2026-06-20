@@ -26,6 +26,11 @@ function migrate(db: DB): void {
   if (!cols.includes("lane")) db.exec("ALTER TABLE tasks ADD COLUMN lane INTEGER");
   if (!cols.includes("suggested_due")) db.exec("ALTER TABLE tasks ADD COLUMN suggested_due TEXT");
   if (!cols.includes("suggested_due_reason")) db.exec("ALTER TABLE tasks ADD COLUMN suggested_due_reason TEXT");
+  if (!cols.includes("completed_at")) {
+    db.exec("ALTER TABLE tasks ADD COLUMN completed_at TEXT");
+    // Backfill: approximate existing done tasks' completion with their last-updated time.
+    db.exec("UPDATE tasks SET completed_at = updated_at WHERE status = 'done' AND completed_at IS NULL");
+  }
   const stageCols = (db.prepare("PRAGMA table_info(stages)").all() as { name: string }[]).map((r) => r.name);
   if (!stageCols.includes("due")) db.exec("ALTER TABLE stages ADD COLUMN due TEXT");
 }

@@ -18,6 +18,7 @@ import { breakdownForAdd } from "../breakdown/index.js";
 import { PRIORITIES, STAGE_STATUSES, TASK_STATUSES, TASK_TYPES, type Priority, type StageStatus, type TaskStatus, type TaskType } from "../types.js";
 import { GOAL_STATUSES, type GoalStatus } from "../types.js";
 import { boardDto, todayDto, taskDetailDto } from "./dto.js";
+import { metricsDto } from "./metricsDto.js";
 import { goalsPageDto, scorecardDto } from "./goalsDto.js";
 import { desktopManifest, releaseDir } from "./desktop.js";
 import { createSseHub } from "./sse.js";
@@ -44,6 +45,7 @@ export function buildServer(store: Store, cfg: SpearConfig): SpearServer {
   // ---- read API ----
   app.get("/api/board", async () => boardDto(store));
   app.get("/api/today", async () => todayDto(store));
+  app.get("/api/metrics", async () => metricsDto(store));
   app.get("/api/executors", async () => store.listExecutors());
 
   // ---- desktop app downloads ----

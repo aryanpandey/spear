@@ -268,6 +268,38 @@ main { padding: 18px 20px 40px; flex: 1; }
 /* >6 lanes: shrink to share the full viewport width instead of horizontal scroll. */
 .lanes.fill { overflow-x: visible; }
 .lanes.fill .lane { min-width: 0; max-width: none; }
+
+/* ===== Metrics tab ===== */
+.metrics { display: flex; flex-direction: column; gap: 16px; }
+.metrics-row { display: flex; gap: 16px; flex-wrap: wrap; }
+.metric-card {
+  flex: 1;
+  min-width: 280px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  padding: 14px 16px;
+}
+.metric-head { color: var(--text-dim); font-size: 13px; letter-spacing: 1px; margin-bottom: 12px; }
+.metric-stats { display: flex; gap: 26px; }
+.metric-stat { display: flex; flex-direction: column; gap: 2px; }
+.metric-num { font-size: 30px; font-weight: 700; line-height: 1; color: var(--text); }
+.metric-stat.accent .metric-num { color: var(--green); text-shadow: var(--glow); }
+.metric-label { font-size: 11px; color: var(--text-dim); text-transform: lowercase; letter-spacing: 1px; }
+
+.burndown { width: 100%; }
+.burndown svg { width: 100%; height: auto; display: block; }
+.bd-grid { stroke: var(--border); stroke-width: 1; opacity: 0.5; }
+.bd-axis { fill: var(--text-dim); font-size: 11px; }
+.bd-axis.today { fill: var(--green); font-weight: 700; }
+.bd-line { fill: none; stroke-width: 2; }
+.bd-line.remaining { stroke: var(--green); }
+.bd-line.completed { stroke: #e3b341; }
+.bd-dot.remaining { fill: var(--green); }
+.bd-dot.completed { fill: #e3b341; }
+.bd-legend { display: flex; gap: 18px; margin-top: 8px; font-size: 11px; }
+.bd-key.remaining { color: var(--green); }
+.bd-key.completed { color: #e3b341; }
 .lane-head {
   display: flex;
   align-items: baseline;
