@@ -70,7 +70,7 @@ export function backfillReadyStages(context: PlanContext, items: PlanItemInput[]
  * are more critical tasks than lanes (`maxLanes`), doubling up is unavoidable, so
  * criticals are spread across the available lanes as evenly as possible.
  *
- * Pure and idempotent: a compliant plan is returned unchanged; never drops items.
+ * Pure and idempotent (f(f(x)) == f(x)): an already-separated, head-ordered plan is returned with identical values; never drops or duplicates items.
  */
 export function separateCriticalLanes(
   items: PlanItemInput[],
@@ -81,6 +81,7 @@ export function separateCriticalLanes(
 
   const presentCritical = [...new Set(items.filter((it) => isCritical(it.task_id)).map((it) => it.task_id))];
   if (presentCritical.length <= 1) return items; // 0 or 1 critical task — nothing to separate
+  if (maxLanes < 1) return items; // degenerate: no lanes to assign into
 
   // Original position of each item (stage_id is unique) — for stable ordering after moves.
   const origPos = new Map<number, { lane: number; order: number }>();

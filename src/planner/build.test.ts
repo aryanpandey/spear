@@ -154,4 +154,41 @@ describe("separateCriticalLanes", () => {
     expect(new Set(out.filter((i) => i.task_id === 1).map((i) => i.lane)).size).toBe(1);
     expect(maxCriticalsPerLane(out, crit)).toBe(1);
   });
+
+  it("renumbers order_in_lane contiguously per lane with critical blocks at the head", () => {
+    const crit = new Set([1, 2]);
+    // task 1 (critical, 2 stages) + task 3 (non-critical) start in lane 0; task 2 (critical) also in lane 0.
+    const out = separateCriticalLanes(
+      [item(1, 0, 0), item(1, 0, 1), item(3, 0, 2), item(2, 0, 3)],
+      crit,
+      6,
+    );
+    for (const lane of new Set(out.map((i) => i.lane))) {
+      const orders = out
+        .filter((i) => i.lane === lane)
+        .map((i) => i.order_in_lane)
+        .sort((a, b) => a - b);
+      expect(orders).toEqual(orders.map((_, idx) => idx)); // contiguous 0..n-1, no gaps/dupes
+      if (out.some((i) => i.lane === lane && crit.has(i.task_id))) {
+        const head = out.find((i) => i.lane === lane && i.order_in_lane === 0)!;
+        expect(crit.has(head.task_id)).toBe(true); // a lane with a critical has a critical at its head
+      }
+    }
+    const t1 = out.filter((i) => i.task_id === 1).sort((a, b) => a.order_in_lane - b.order_in_lane);
+    expect(t1.map((i) => i.order_in_lane)).toEqual([0, 1]); // stages contiguous at the head
+    expect(new Set(t1.map((i) => i.lane)).size).toBe(1); // and in one lane
+  });
+
+  it("doubles criticals into the single lane when maxLanes is 1", () => {
+    const out = separateCriticalLanes([item(1, 0, 0), item(2, 0, 1)], new Set([1, 2]), 1);
+    expect(out.every((i) => i.lane === 0)).toBe(true);
+    expect(out.map((i) => i.order_in_lane).sort((a, b) => a - b)).toEqual([0, 1]);
+  });
+
+  it("pulls a critical whose lane is out of range back into [0, maxLanes)", () => {
+    const crit = new Set([1, 2]);
+    const out = separateCriticalLanes([item(1, 0, 0), item(2, 5, 0)], crit, 2);
+    expect(out.every((i) => i.lane < 2)).toBe(true);
+    expect(laneOf(out, 1)).not.toBe(laneOf(out, 2));
+  });
 });
