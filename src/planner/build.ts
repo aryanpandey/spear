@@ -202,9 +202,17 @@ export async function buildAndSavePlan(
     if (items.length > res.items.length) {
       process.stderr.write(`spear: re-plan kept ${items.length - res.items.length} flow(s) the planner omitted\n`);
     }
+    // Hard rule: no two distinct critical tasks share a lane (unless we run out of lanes).
+    const criticalTaskIds = new Set(context.flows.filter((f) => f.priority === "critical").map((f) => f.taskId));
+    const laneBefore = new Map(items.map((it) => [it.stage_id, it.lane]));
+    const separated = separateCriticalLanes(items, criticalTaskIds, cfg.maxLanes);
+    const relocated = separated.filter((it) => laneBefore.get(it.stage_id) !== it.lane).length;
+    if (relocated > 0) {
+      process.stderr.write(`spear: re-plan moved ${relocated} item(s) to keep critical tasks in separate lanes\n`);
+    }
     const plan = store.savePlan(
       { plan_date: todayLocal(), trigger, narrative: res.narrative, model: cfg.models.planner },
-      items,
+      separated,
     );
     return { plan };
   } catch (err) {
