@@ -15,6 +15,8 @@ ORDER WITHIN EACH LANE strictly by phase: design / planning first, then implemen
 
 CRITICAL OVERRIDE: a flow whose priority is "critical" and that is ready (no open blockers) is a drop-everything task. Place it at the HEAD of its lane — ahead of phase order and ahead of any overdue or in-progress flow in that lane — and set its next step's scheduled_state to "start_now", superseding whatever was previously current there. A critical flow that is still blocked stays "waiting".
 
+ONE CRITICAL TASK PER LANE: never place two DIFFERENT critical tasks (different task_id) in the same lane — each critical task gets its own lane. The multiple stages of a SINGLE critical task share one lane (that is fine). Only put two critical tasks in one lane if there are more critical tasks than the ${maxLanes} lanes available.
+
 Then get the founder through the day with the SHORTEST personal critical path:
 - Order lanes so the highest-priority / most urgent theme comes first.
 - Assign each lane to an executor. Offload to a non-"self" executor whenever a stage's delegatable_to allows it, so the founder (the "self" executor) is not the bottleneck. If "self" is the only executor, still set is_delegation_candidate=true on any stage that COULD be handed to an ai_agent / teammate / ci.
