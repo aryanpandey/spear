@@ -100,6 +100,47 @@ describe("buildAndSavePlan", () => {
     const laneB = items.find((it) => it.task_id === b.task.id)!.lane;
     expect(laneA).not.toBe(laneB);
   });
+
+  it("consolidates a backfilled critical stage and still separates it from another critical", async () => {
+    const store = freshStore();
+    // Critical A has two stages; the LLM will emit only the first, so the second is backfilled.
+    const a = addTask(store, {
+      title: "Critical A",
+      stages: [
+        { name: "Plan", kind: "planning" },
+        { name: "Impl", kind: "implementation" },
+      ],
+    });
+    const b = addTask(store, { title: "Critical B", stages: [{ name: "Impl", kind: "implementation" }] });
+    store.updateTask(a.task.id, { priority: "critical" });
+    store.updateTask(b.task.id, { priority: "critical" });
+    const exec = store.listExecutors(true)[0];
+    // The LLM emits only A's first stage and B's stage, both in lane 0; A's second stage
+    // is omitted (backfillReadyStages will append it into A's lane, lane 0).
+    const run = async () => ({
+      narrative: "n",
+      lanes: [
+        {
+          lane: 0,
+          executor_id: exec.id,
+          items: [
+            { task_id: a.task.id, stage_id: a.stages[0].id, order: 0, is_delegation_candidate: false, scheduled_state: "start_now", rationale: "r" },
+            { task_id: b.task.id, stage_id: b.stages[0].id, order: 1, is_delegation_candidate: false, scheduled_state: "start_now", rationale: "r" },
+          ],
+        },
+      ],
+    });
+    const { plan } = await buildAndSavePlan(store, DEFAULT_CONFIG, "manual", run);
+    const items = store.getPlanItems(plan!.id);
+    // Both of A's stages survive (one was backfilled) and live in a single lane.
+    const aItems = items.filter((it) => it.task_id === a.task.id);
+    expect(aItems).toHaveLength(2);
+    const aLanes = new Set(aItems.map((it) => it.lane));
+    expect(aLanes.size).toBe(1);
+    // A and B are still kept in different lanes despite backfill folding A's stage back in.
+    const bLane = items.find((it) => it.task_id === b.task.id)!.lane;
+    expect([...aLanes][0]).not.toBe(bLane);
+  });
 });
 
 // ---- helpers for separateCriticalLanes ----

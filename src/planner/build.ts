@@ -70,7 +70,10 @@ export function backfillReadyStages(context: PlanContext, items: PlanItemInput[]
  * are more critical tasks than lanes (`maxLanes`), doubling up is unavoidable, so
  * criticals are spread across the available lanes as evenly as possible.
  *
- * Pure and idempotent (f(f(x)) == f(x)): an already-separated, head-ordered plan is returned with identical values; never drops or duplicates items.
+ * Pure; never drops or duplicates items. Idempotent when there are at most
+ * `maxLanes` critical tasks (the common path) — an already-separated, head-ordered
+ * plan comes back with identical values. In the over-capacity case a second pass may
+ * re-balance to a different but equally compliant layout.
  */
 export function separateCriticalLanes(
   items: PlanItemInput[],
