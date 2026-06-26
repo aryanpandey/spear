@@ -3,7 +3,8 @@ import { openDb } from "../db/index.js";
 import { Store } from "../db/store.js";
 import { addTask } from "../service.js";
 import { DEFAULT_CONFIG } from "../config/index.js";
-import { buildAndSavePlan } from "./build.js";
+import { buildAndSavePlan, separateCriticalLanes } from "./build.js";
+import type { PlanItemInput } from "../db/store.js";
 
 function freshStore(): Store {
   const s = new Store(openDb(":memory:"));
@@ -70,5 +71,87 @@ describe("buildAndSavePlan", () => {
     expect(error).toMatch(/cli down/);
     expect(plan).toBeNull(); // no prior plan existed
     expect(store.getCurrentPlan()).toBeUndefined();
+  });
+});
+
+// ---- helpers for separateCriticalLanes ----
+let sid = 0;
+function item(task_id: number, lane: number, order_in_lane: number, extra: Partial<PlanItemInput> = {}): PlanItemInput {
+  return {
+    task_id,
+    stage_id: ++sid,
+    lane,
+    order_in_lane,
+    executor_id: null,
+    is_delegation_candidate: false,
+    scheduled_state: "waiting",
+    rationale: "r",
+    ...extra,
+  };
+}
+const laneOf = (out: PlanItemInput[], taskId: number) => out.find((i) => i.task_id === taskId)!.lane;
+function maxCriticalsPerLane(out: PlanItemInput[], crit: Set<number>): number {
+  const m = new Map<number, Set<number>>();
+  for (const i of out) {
+    if (!crit.has(i.task_id)) continue;
+    if (!m.has(i.lane)) m.set(i.lane, new Set());
+    m.get(i.lane)!.add(i.task_id);
+  }
+  return Math.max(0, ...[...m.values()].map((s) => s.size));
+}
+
+describe("separateCriticalLanes", () => {
+  it("splits two distinct critical tasks sharing a lane when capacity exists", () => {
+    const out = separateCriticalLanes([item(1, 0, 0), item(2, 0, 1)], new Set([1, 2]), 6);
+    expect(laneOf(out, 1)).not.toBe(laneOf(out, 2));
+    expect(maxCriticalsPerLane(out, new Set([1, 2]))).toBe(1);
+  });
+
+  it("leaves a single critical task's multiple stages in one lane (sub-tasks allowed)", () => {
+    const input = [item(1, 0, 0), item(1, 0, 1), item(1, 0, 2)];
+    const out = separateCriticalLanes(input, new Set([1]), 6);
+    expect(out).toHaveLength(3);
+    expect(out.every((i) => i.lane === 0)).toBe(true);
+  });
+
+  it("separates criticals but never moves non-critical work", () => {
+    const out = separateCriticalLanes(
+      [item(1, 0, 0), item(2, 0, 1), item(3, 0, 2)],
+      new Set([1, 2]),
+      6,
+    );
+    expect(laneOf(out, 1)).not.toBe(laneOf(out, 2));
+    expect(laneOf(out, 3)).toBe(0); // non-critical stays put
+    expect(maxCriticalsPerLane(out, new Set([1, 2]))).toBe(1);
+  });
+
+  it("distributes evenly when there are more criticals than lanes", () => {
+    const crit = new Set([1, 2, 3, 4, 5]);
+    const input = [item(1, 0, 0), item(2, 0, 1), item(3, 0, 2), item(4, 0, 3), item(5, 0, 4)];
+    const out = separateCriticalLanes(input, crit, 2);
+    const lanesUsed = new Set(out.map((i) => i.lane));
+    expect(lanesUsed.size).toBeLessThanOrEqual(2);
+    expect(maxCriticalsPerLane(out, crit)).toBeLessThanOrEqual(Math.ceil(5 / 2)); // 3
+  });
+
+  it("is a no-op on an already-compliant plan (idempotent)", () => {
+    const crit = new Set([1, 2]);
+    const input = [item(1, 0, 0), item(2, 1, 0)];
+    const once = separateCriticalLanes(input, crit, 6);
+    const twice = separateCriticalLanes(once, crit, 6);
+    expect(laneOf(once, 1)).toBe(0);
+    expect(laneOf(once, 2)).toBe(1);
+    expect(twice).toEqual(once);
+  });
+
+  it("consolidates a critical task the LLM split across two lanes", () => {
+    const crit = new Set([1, 2]);
+    const out = separateCriticalLanes(
+      [item(1, 0, 0), item(1, 1, 0), item(2, 1, 1)],
+      crit,
+      6,
+    );
+    expect(new Set(out.filter((i) => i.task_id === 1).map((i) => i.lane)).size).toBe(1);
+    expect(maxCriticalsPerLane(out, crit)).toBe(1);
   });
 });
